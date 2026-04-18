@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The Activity theme. We use a windowBackground that matches the
+        Compose BgCream so there is no flash on startup.
+    -->
+    <style name="Theme.MaSemaineGourmande" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg_cream</item>
+        <item name="android:statusBarColor">@color/pri_orange</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
