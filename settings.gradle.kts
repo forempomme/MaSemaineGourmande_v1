@@ -1,12 +1,6 @@
 pluginManagement {
     repositories {
-        google {
-            content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
-            }
-        }
+        google()
         mavenCentral()
         gradlePluginPortal()
     }
@@ -18,8 +12,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
-    // ← bloc versionCatalogs supprimé : Gradle 8 charge
-    //   gradle/libs.versions.toml automatiquement
 }
 
 rootProject.name = "MaSemaineGourmande"
