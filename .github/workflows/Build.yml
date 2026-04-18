@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -27,15 +25,15 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accepter les licences + installer composants SDK
+      - name: Licences + composants SDK
         run: |
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Créer local.properties
+      - name: local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-      - name: Build APK debug
+      - name: Build APK
         run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
