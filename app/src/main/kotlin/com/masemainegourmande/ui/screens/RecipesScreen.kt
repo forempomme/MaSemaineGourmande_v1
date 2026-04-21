@@ -184,9 +184,9 @@ fun RecipesScreen(
             } else {
                 LazyVerticalGrid(
                     columns     = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement   = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement   = Arrangement.spacedBy(5.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(filtered, key = { it.id }) { recipe ->
@@ -296,11 +296,11 @@ private fun RecipeCard(
                     color = if (recipe.favorite) StarYellow else Color(0xFFDDC8B8))
             }
             Column(
-                Modifier.padding(top = 24.dp, bottom = 28.dp, start = 6.dp, end = 6.dp),
+                Modifier.padding(top = 20.dp, bottom = 22.dp, start = 5.dp, end = 5.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(recipe.emoji, fontSize = 26.sp)
-                Spacer(Modifier.height(3.dp))
+                Text(recipe.emoji, fontSize = 24.sp)
+                Spacer(Modifier.height(2.dp))
                 Text(recipe.name, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
                     textAlign = TextAlign.Center, maxLines = 2, lineHeight = 15.sp)
                 if (recipe.rating > 0) {

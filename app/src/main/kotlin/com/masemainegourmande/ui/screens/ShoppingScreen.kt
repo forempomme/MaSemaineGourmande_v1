@@ -86,20 +86,20 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
         ) {
             // ── Inline add bar ──────────────────────────
             item(key = "add_bar") {
-                // Compact single-row add bar
+                // Single-row compact add bar — no fixed heights, verticalAlignment handles centering
                 Row(
-                    Modifier.background(Color.White).padding(horizontal = 10.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Modifier.background(Color.White).padding(horizontal = 10.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
-                        value         = addName,
-                        onValueChange = { addName = it },
-                        placeholder   = { Text("Article…", fontSize = 12.sp) },
-                        modifier      = Modifier.weight(1f).height(46.dp),
-                        shape         = RoundedCornerShape(8.dp),
-                        singleLine    = true,
-                        textStyle     = LocalTextStyle.current.copy(fontSize = 13.sp),
+                        value           = addName,
+                        onValueChange   = { addName = it },
+                        placeholder     = { Text("Article…", fontSize = 12.sp, lineHeight = 14.sp) },
+                        modifier        = Modifier.weight(1f),
+                        shape           = RoundedCornerShape(8.dp),
+                        singleLine      = true,
+                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, lineHeight = 16.sp),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
                             imeAction      = ImeAction.Next
@@ -107,40 +107,40 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PriOrange)
                     )
                     OutlinedTextField(
-                        value         = addQty,
-                        onValueChange = { addQty = it },
-                        placeholder   = { Text("Qté", fontSize = 11.sp) },
-                        modifier      = Modifier.width(50.dp).height(46.dp),
-                        shape         = RoundedCornerShape(8.dp),
-                        singleLine    = true,
-                        textStyle     = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                        value           = addQty,
+                        onValueChange   = { addQty = it },
+                        placeholder     = { Text("Qté", fontSize = 11.sp) },
+                        modifier        = Modifier.width(52.dp),
+                        shape           = RoundedCornerShape(8.dp),
+                        singleLine      = true,
+                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, lineHeight = 16.sp),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
                             imeAction    = ImeAction.Next
                         )
                     )
                     OutlinedTextField(
-                        value         = addUnit,
-                        onValueChange = { addUnit = it },
-                        placeholder   = { Text("U.", fontSize = 11.sp) },
-                        modifier      = Modifier.width(50.dp).height(46.dp),
-                        shape         = RoundedCornerShape(8.dp),
-                        singleLine    = true,
-                        textStyle     = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                        value           = addUnit,
+                        onValueChange   = { addUnit = it },
+                        placeholder     = { Text("U.", fontSize = 11.sp) },
+                        modifier        = Modifier.width(52.dp),
+                        shape           = RoundedCornerShape(8.dp),
+                        singleLine      = true,
+                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, lineHeight = 16.sp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { addItem(); keyboard?.hide() })
                     )
-                    // Compact add button — icon only
+                    // ➕ icon button — aligned naturally by Row
                     Surface(
                         color    = if (addName.isNotBlank()) PriOrange else PriOrangeLight,
                         shape    = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(46.dp)
+                        modifier = Modifier.size(40.dp)
                             .clickable(enabled = addName.isNotBlank()) { addItem() }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.Add, "Ajouter",
-                                tint = if (addName.isNotBlank()) Color.White else PriOrange,
-                                modifier = Modifier.size(22.dp))
+                                tint     = if (addName.isNotBlank()) Color.White else PriOrange,
+                                modifier = Modifier.size(20.dp))
                         }
                     }
                 }
@@ -188,7 +188,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                     stickyHeader(key = "hdr_${group.categoryId}") {
                         Row(
                             Modifier.fillMaxWidth().background(BgCream)
-                                .padding(horizontal = 12.dp, vertical = 5.dp),
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -207,7 +207,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                     items(group.items, key = { it.id }) { item ->
                         Row(
                             Modifier.fillMaxWidth().background(Color.White)
-                                .padding(horizontal = 14.dp, vertical = 7.dp),
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
