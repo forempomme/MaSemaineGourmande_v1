@@ -7,11 +7,14 @@ import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -23,20 +26,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.masemainegourmande.data.model.CategoryEntity
 import com.masemainegourmande.data.model.ShoppingItemEntity
 import com.masemainegourmande.ui.theme.*
 import com.masemainegourmande.viewmodel.ShoppingGroup
@@ -51,7 +51,7 @@ private val CAT_EMOJI = mapOf(
 private fun catEmoji(name: String) =
     CAT_EMOJI.entries.firstOrNull { name.startsWith(it.key) }?.value ?: "📦"
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingScreen(vm: ShoppingViewModel) {
     val groups     by vm.groups.collectAsState()
@@ -62,11 +62,17 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
     var addName  by remember { mutableStateOf("") }
     var addQty   by remember { mutableStateOf("") }
     var addUnit  by remember { mutableStateOf("") }
-    val keyboard = LocalSoftwareKeyboardController.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
-    var showShare  by remember { mutableStateOf(false) }
-    var showMenu   by remember { mutableStateOf(false) }
-    var undoItem   by remember { mutableStateOf<ShoppingItemEntity?>(null) }
+    var showShare by remember { mutableStateOf(false) }
+    var showMenu  by remember { mutableStateOf(false) }
+    var undoItem  by remember { mutableStateOf<ShoppingItemEntity?>(null) }
+
+    // Drag state: track which category / which item is being dragged
+    var draggingCatId   by remember { mutableStateOf<String?>(null) }
+    var dragOverCatId   by remember { mutableStateOf<String?>(null) }
+    var draggingItemKey by remember { mutableStateOf<String?>(null) } // "catId::itemId"
+    var dragOverItemKey by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(undoItem) {
         if (undoItem != null) { delay(3000); undoItem = null }
@@ -79,72 +85,81 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
         }
     }
 
+    // Drop handlers
+    fun onCatDrop() {
+        val from = draggingCatId; val to = dragOverCatId
+        if (from != null && to != null && from != to) vm.reorderCategory(from, to)
+        draggingCatId = null; dragOverCatId = null
+    }
+    fun onItemDrop(catId: String) {
+        val fromKey = draggingItemKey; val toKey = dragOverItemKey
+        if (fromKey != null && toKey != null && fromKey != toKey) {
+            val fromId = fromKey.substringAfter("::")
+            val toId   = toKey.substringAfter("::")
+            vm.reorderItem(catId, fromId, toId)
+        }
+        draggingItemKey = null; dragOverItemKey = null
+    }
+
     Box(Modifier.fillMaxSize().background(BgCream)) {
-        LazyColumn(
-            contentPadding = PaddingValues(bottom = 72.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // ── Inline add bar ──────────────────────────
+        LazyColumn(Modifier.fillMaxSize()) {
+
+            // ── Inline add bar ─────────────────────────────────
             item(key = "add_bar") {
-                // Single-row compact add bar — no fixed heights, verticalAlignment handles centering
+                val inputColors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor       = PriOrange,
+                    unfocusedBorderColor     = BorderBeige,
+                    focusedTextColor         = Color.Black,
+                    unfocusedTextColor       = Color.Black,
+                    focusedContainerColor    = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor  = MaterialTheme.colorScheme.surface,
+                    focusedPlaceholderColor  = TextMuted,
+                    unfocusedPlaceholderColor = TextMuted
+                )
                 Row(
-                    Modifier.background(Color.White).padding(horizontal = 10.dp, vertical = 5.dp),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    Modifier.background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    val inputColors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor      = PriOrange,
-                        unfocusedBorderColor    = BorderBeige,
-                        focusedTextColor        = Color.Black,
-                        unfocusedTextColor      = Color.Black,
-                        focusedPlaceholderColor = TextMuted,
-                        unfocusedPlaceholderColor = TextMuted
-                    )
                     OutlinedTextField(
-                        value           = addName,
-                        onValueChange   = { addName = it },
-                        placeholder     = { Text("Article…", fontSize = 12.sp) },
-                        modifier        = Modifier.weight(1f),
-                        shape           = RoundedCornerShape(8.dp),
-                        singleLine      = true,
-                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
+                        value = addName, onValueChange = { addName = it },
+                        placeholder = { Text("Article…", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp), singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
                         keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences,
-                            imeAction      = ImeAction.Next
+                            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Next
                         ),
                         colors = inputColors
                     )
                     OutlinedTextField(
-                        value           = addQty,
-                        onValueChange   = { addQty = it },
-                        placeholder     = { Text("Qté", fontSize = 11.sp) },
-                        modifier        = Modifier.width(52.dp),
-                        shape           = RoundedCornerShape(8.dp),
-                        singleLine      = true,
-                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
+                        value = addQty, onValueChange = { addQty = it },
+                        placeholder = { Text("Qté", fontSize = 11.sp) },
+                        modifier = Modifier.width(54.dp),
+                        shape = RoundedCornerShape(10.dp), singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
-                            imeAction    = ImeAction.Next
+                            imeAction    = androidx.compose.ui.text.input.ImeAction.Next
                         ),
                         colors = inputColors
                     )
                     OutlinedTextField(
-                        value           = addUnit,
-                        onValueChange   = { addUnit = it },
-                        placeholder     = { Text("U.", fontSize = 11.sp) },
-                        modifier        = Modifier.width(52.dp),
-                        shape           = RoundedCornerShape(8.dp),
-                        singleLine      = true,
-                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        value = addUnit, onValueChange = { addUnit = it },
+                        placeholder = { Text("U.", fontSize = 11.sp) },
+                        modifier = Modifier.width(54.dp),
+                        shape = RoundedCornerShape(10.dp), singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
+                        keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { addItem(); keyboard?.hide() }),
                         colors = inputColors
                     )
-                    // ➕ icon button — aligned naturally by Row
                     Surface(
                         color    = if (addName.isNotBlank()) PriOrange else PriOrangeLight,
-                        shape    = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(40.dp)
+                        shape    = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(42.dp)
                             .clickable(enabled = addName.isNotBlank()) { addItem() }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -157,96 +172,148 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                 HorizontalDivider(color = BorderBeige)
             }
 
-            // ── Top actions bar ──────────────────────────
-            item(key = "actions_bar") {
+            // ── Action bar (count + share) ──────────────────────
+            item(key = "action_bar") {
                 Row(
                     Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
-                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                        .padding(horizontal = 14.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         if (totalCount > 0) "🛒 $totalCount article${if (totalCount > 1) "s" else ""}"
                         else "🛒 Liste vide",
-                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                         color = TextMuted, modifier = Modifier.weight(1f)
                     )
                     if (groups.isNotEmpty()) {
-                        IconButton(onClick = { showShare = true }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Share, "Partager", tint = TextMuted, modifier = Modifier.size(18.dp))
+                        IconButton(onClick = { showShare = true }, modifier = Modifier.size(30.dp)) {
+                            Icon(Icons.Default.Share, null, tint = TextMuted, modifier = Modifier.size(16.dp))
                         }
-                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.MoreVert, "Plus", tint = TextMuted, modifier = Modifier.size(18.dp))
+                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(30.dp)) {
+                            Icon(Icons.Default.MoreVert, null, tint = TextMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
+                HorizontalDivider(color = BorderBeige)
             }
 
+            // ── Empty state ─────────────────────────────────────
             if (groups.isEmpty()) {
                 item(key = "empty") {
                     Column(
-                        Modifier.fillMaxWidth().padding(top = 60.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        Modifier.fillMaxWidth().padding(top = 64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Planifiez des repas pour remplir\nautomatiquement votre liste.",
-                            fontSize = 14.sp, color = TextMuted, fontStyle = FontStyle.Italic,
+                        Text("🛒", fontSize = 52.sp)
+                        Text("Liste vide", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Planifiez des repas ou ajoutez\ndes articles manuellement",
+                            fontSize = 13.sp, color = TextMuted, fontStyle = FontStyle.Italic,
                             textAlign = TextAlign.Center)
                     }
                 }
             } else {
-                groups.forEach { group ->
-                    // Category header
+                // ── Categories with drag-drop ────────────────────
+                groups.forEachIndexed { catIdx, group ->
+                    // Category header — long-press to drag
                     stickyHeader(key = "hdr_${group.categoryId}") {
+                        val isHovered = dragOverCatId == group.categoryId && draggingCatId != group.categoryId
                         Row(
-                            Modifier.fillMaxWidth().background(BgCream)
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            Modifier.fillMaxWidth()
+                                .background(if (isHovered) PriOrangeLight else BgCream)
+                                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 5.dp)
+                                .pointerInput(group.categoryId) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = { draggingCatId = group.categoryId },
+                                        onDrag = { change, _ ->
+                                            change.consume()
+                                            // Simple: mark hovered via offset (approximation)
+                                        },
+                                        onDragEnd   = { onCatDrop() },
+                                        onDragCancel = { draggingCatId = null; dragOverCatId = null }
+                                    )
+                                },
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
                         ) {
+                            Text("⠿", fontSize = 14.sp, color = TextMuted.copy(alpha = 0.5f))
                             Text(catEmoji(group.categoryName), fontSize = 14.sp)
                             Text(group.categoryName.uppercase(),
                                 fontWeight = FontWeight.ExtraBold, fontSize = 10.sp,
-                                color = TextMuted, letterSpacing = 0.8.sp, modifier = Modifier.weight(1f))
+                                color = TextMuted, letterSpacing = 0.8.sp,
+                                modifier = Modifier.weight(1f))
                             Surface(color = PriOrangeLight, shape = RoundedCornerShape(20.dp)) {
-                                Text(group.items.size.toString(), fontSize = 11.sp,
+                                Text(group.items.size.toString(), fontSize = 10.sp,
                                     fontWeight = FontWeight.ExtraBold, color = PriOrange,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp))
                             }
                         }
                     }
+
                     // Items
-                    items(group.items, key = { it.id }) { item ->
-                        Row(
-                            Modifier.fillMaxWidth().background(Color.White)
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(item.name, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1f), maxLines = 1,
-                                overflow = TextOverflow.Ellipsis)
-                            if (item.qty > 0) {
-                                Text("${fmtQty(item.qty)} ${item.unit}".trim(),
-                                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PriOrange)
-                            }
-                            if (item.fromRecipeId != null) {
-                                Text("📅", fontSize = 10.sp, color = TextMuted)
-                            }
-                            // ✕ delete — with undo
-                            IconButton(onClick = { undoItem = item; vm.deleteItem(item.id) },
-                                modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Close, "Supprimer", tint = TextMuted,
-                                    modifier = Modifier.size(14.dp))
+                    group.items.forEachIndexed { itemIdx, item ->
+                        val itemKey = "${group.categoryId}::${item.id}"
+                        item(key = item.id) {
+                            val isDragging = draggingItemKey == itemKey
+                            val isHovered  = dragOverItemKey == itemKey && !isDragging
+                            Card(
+                                shape  = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDragging) PriOrangeLight
+                                                     else if (isHovered) MaterialTheme.colorScheme.surfaceVariant
+                                                     else MaterialTheme.colorScheme.surface
+                                ),
+                                border = BorderStroke(1.dp, if (isHovered) PriOrange else BorderBeige),
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 3.dp)
+                                    .shadow(if (isDragging) 6.dp else 0.dp, RoundedCornerShape(12.dp))
+                                    .pointerInput(itemKey) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart  = { draggingItemKey = itemKey },
+                                            onDrag       = { change, _ -> change.consume(); dragOverItemKey = itemKey },
+                                            onDragEnd    = { onItemDrop(group.categoryId) },
+                                            onDragCancel = { draggingItemKey = null; dragOverItemKey = null }
+                                        )
+                                    }
+                            ) {
+                                Row(
+                                    Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Text("⠿", fontSize = 12.sp, color = BorderBeige)
+                                    Text(item.name, fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold, color = TextBrown,
+                                        modifier = Modifier.weight(1f), maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis)
+                                    if (item.qty > 0) {
+                                        Text("${fmtQty(item.qty)} ${item.unit}".trim(),
+                                            fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                            color = PriOrange)
+                                    }
+                                    if (item.fromRecipeId != null) {
+                                        Surface(color = PriOrangeLight, shape = RoundedCornerShape(4.dp)) {
+                                            Text("📅", fontSize = 9.sp,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                        }
+                                    }
+                                    IconButton(onClick = { undoItem = item; vm.deleteItem(item.id) },
+                                        modifier = Modifier.size(24.dp)) {
+                                        Icon(Icons.Default.Close, null, tint = TextMuted,
+                                            modifier = Modifier.size(14.dp))
+                                    }
+                                }
                             }
                         }
-                        HorizontalDivider(color = BorderBeige, thickness = 0.5.dp,
-                            modifier = Modifier.padding(horizontal = 14.dp))
                     }
-                    item(key = "sp_${group.categoryId}") { Spacer(Modifier.height(4.dp)) }
+                    item(key = "sp_${group.categoryId}") { Spacer(Modifier.height(6.dp)) }
                 }
+                item(key = "bottom_pad") { Spacer(Modifier.height(72.dp)) }
             }
         }
 
-        // ── Undo snackbar ────────────────────────────────
+        // ── Undo snackbar ───────────────────────────────────────
         AnimatedVisibility(
             visible  = undoItem != null,
             enter    = slideInVertically { it } + fadeIn(),
@@ -258,28 +325,25 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                 Row(Modifier.padding(start=18.dp, end=10.dp, top=10.dp, bottom=10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("🗑  ${undoItem?.name ?: ""} supprimé",
-                        color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text("✅  ${undoItem?.name ?: ""} supprimé",
+                        color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f))
                     Button(onClick = {
                         undoItem?.let { vm.addManualItem(it.name, it.qty, it.unit); undoItem = null }
                     }, colors = ButtonDefaults.buttonColors(containerColor = PriOrange),
                         shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(horizontal=16.dp, vertical=6.dp)) {
-                        Text("Annuler", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        contentPadding = PaddingValues(horizontal=14.dp, vertical=6.dp)) {
+                        Text("Annuler", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }
         }
     }
 
-    if (showShare) {
-        ShareSheet(text = vm.buildShareText(groups), onDismiss = { showShare = false }, context = context)
-    }
+    if (showShare) ShareSheet(vm.buildShareText(groups), { showShare = false }, context)
     if (showMenu) {
-        AlertDialog(
-            onDismissRequest = { showMenu = false },
+        AlertDialog(onDismissRequest = { showMenu = false },
             title = { Text("Actions") },
-            text  = {
+            text = {
                 Column {
                     TextButton(onClick = { vm.clearChecked(); showMenu = false }) { Text("✓ Vider les cochés") }
                     TextButton(onClick = { vm.clearAll(); showMenu = false },

@@ -67,6 +67,35 @@ class ShoppingViewModel(private val repo: AppRepository) : ViewModel() {
         viewModelScope.launch { repo.clearAllShoppingItems() }
     }
 
+
+    // ── Drag-drop reorder ────────────────────────────────────
+
+    /** Move category [fromId] to position of [toId]. All items in the category follow. */
+    fun reorderCategory(fromId: String, toId: String) {
+        viewModelScope.launch {
+            val cats = repo.getCategories().sortedBy { it.sortOrder }.toMutableList()
+            val fromIdx = cats.indexOfFirst { it.id == fromId }
+            val toIdx   = cats.indexOfFirst { it.id == toId }
+            if (fromIdx == -1 || toIdx == -1 || fromIdx == toIdx) return@launch
+            val moved = cats.removeAt(fromIdx)
+            cats.add(toIdx, moved)
+            cats.forEachIndexed { i, cat -> repo.upsertCategory(cat.copy(sortOrder = i)) }
+        }
+    }
+
+    /** Move item [fromItemId] to position of [toItemId] within the same category [catId]. */
+    fun reorderItem(catId: String, fromItemId: String, toItemId: String) {
+        viewModelScope.launch {
+            val items = repo.getShoppingItemsByCategory(catId).toMutableList()
+            val fromIdx = items.indexOfFirst { it.id == fromItemId }
+            val toIdx   = items.indexOfFirst { it.id == toItemId }
+            if (fromIdx == -1 || toIdx == -1 || fromIdx == toIdx) return@launch
+            val moved = items.removeAt(fromIdx)
+            items.add(toIdx, moved)
+            items.forEachIndexed { i, item -> repo.updateShoppingItemOrder(item.id, i) }
+        }
+    }
+
     // ── Share text ────────────────────────────────────────────
 
     fun buildShareText(groups: List<ShoppingGroup>): String {
