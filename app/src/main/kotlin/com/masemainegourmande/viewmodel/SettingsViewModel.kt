@@ -17,7 +17,7 @@ import java.util.UUID
 @Serializable
 data class AppBackup(
     val version: String = "1.6",
-    val defaultPersons: Int = 4,
+    val defaultPersons: Int = 6,
     val recipes: List<RecipeBackup> = emptyList(),
     val meals: List<MealBackup> = emptyList(),
     val categories: List<CatBackup> = emptyList()
@@ -48,7 +48,7 @@ class SettingsViewModel(
     private val prefs: android.content.SharedPreferences
 ) : ViewModel() {
 
-    val defaultPersons = MutableStateFlow(prefs.getInt("default_persons", 4))
+    val defaultPersons = MutableStateFlow(prefs.getInt("default_persons", 6))
     val categories     = repo.observeCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val pantry         = repo.observePantry()

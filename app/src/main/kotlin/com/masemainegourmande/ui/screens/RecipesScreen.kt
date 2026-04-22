@@ -96,8 +96,10 @@ fun RecipesScreen(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(10.dp), singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor    = PriOrange,
-                    unfocusedBorderColor  = BorderBeige
+                    focusedBorderColor      = PriOrange,
+                    unfocusedBorderColor    = PriOrange.copy(alpha = 0.4f),
+                    unfocusedContainerColor = PriOrangeLight,
+                    focusedContainerColor   = PriOrangeLight
                 )
             )
             Surface(color = PriOrangeLight, shape = RoundedCornerShape(10.dp),
@@ -122,6 +124,8 @@ fun RecipesScreen(
                             onClick  = { vm.activeTag.value = null },
                             label    = { Text("Tous") },
                             colors   = FilterChipDefaults.filterChipColors(
+                                containerColor         = PriOrangeLight,
+                                labelColor             = PriOrangeDark,
                                 selectedContainerColor = PriOrange,
                                 selectedLabelColor     = Color.White
                             )
@@ -133,6 +137,8 @@ fun RecipesScreen(
                             onClick  = { vm.activeTag.value = if (activeTag == tag) null else tag },
                             label    = { Text(tag) },
                             colors   = FilterChipDefaults.filterChipColors(
+                                containerColor         = PriOrangeLight,
+                                labelColor             = PriOrangeDark,
                                 selectedContainerColor = PriOrange,
                                 selectedLabelColor     = Color.White
                             )
@@ -160,6 +166,8 @@ fun RecipesScreen(
                         onClick  = { vm.sortMode.value = mode },
                         label    = { Text(label, fontSize = 12.sp) },
                         colors   = FilterChipDefaults.filterChipColors(
+                            containerColor         = PriOrangeLight,
+                            labelColor             = PriOrangeDark,
                             selectedContainerColor = PriOrange,
                             selectedLabelColor     = Color.White
                         )
@@ -291,38 +299,36 @@ private fun RecipeCard(
             }
             // ★ Favorite — top-right
             IconButton(onClick = onFavorite,
-                modifier = Modifier.align(Alignment.TopEnd).size(28.dp)) {
+                modifier = Modifier.align(Alignment.TopEnd).size(24.dp)) {
                 Text(if (recipe.favorite) "★" else "☆", fontSize = 17.sp,
                     color = if (recipe.favorite) StarYellow else Color(0xFFDDC8B8))
             }
-            Column(
-                Modifier.padding(top = 20.dp, bottom = 22.dp, start = 5.dp, end = 5.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Horizontal layout: emoji | name + meta
+            Row(
+                Modifier.padding(start = 8.dp, end = 8.dp, top = 26.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                Text(recipe.emoji, fontSize = 24.sp)
-                Spacer(Modifier.height(2.dp))
-                Text(recipe.name, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
-                    textAlign = TextAlign.Center, maxLines = 2, lineHeight = 15.sp)
-                if (recipe.rating > 0) {
-                    Row(horizontalArrangement = Arrangement.Center) {
-                        repeat(recipe.rating)      { Text("★", fontSize = 10.sp, color = StarYellow) }
-                        repeat(5 - recipe.rating) { Text("★", fontSize = 10.sp, color = BorderBeige) }
+                Text(recipe.emoji, fontSize = 26.sp, modifier = Modifier.padding(bottom = 2.dp))
+                Column(Modifier.weight(1f).padding(end = 4.dp)) {
+                    Text(recipe.name, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
+                        maxLines = 2, lineHeight = 15.sp, overflow = TextOverflow.Ellipsis)
+                    if (recipe.rating > 0) {
+                        Row {
+                            repeat(recipe.rating)      { Text("★", fontSize = 9.sp, color = StarYellow) }
+                            repeat(5 - recipe.rating) { Text("★", fontSize = 9.sp, color = BorderBeige) }
+                        }
                     }
-                }
-                Text("👤 ${recipe.portions}p", fontSize = 10.sp, color = TextMuted)
-                if (lastCookedLabel != null) {
-                    Text("🕐 $lastCookedLabel", fontSize = 9.sp, color = TextMuted, fontStyle = FontStyle.Italic, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                } else {
-                    Text("🕐 Jamais cuisinée", fontSize = 9.sp, color = TextMuted, fontStyle = FontStyle.Italic)
-                }
-                val tags = recipe.parseTags()
-                if (tags.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.padding(top = 3.dp)) {
-                        tags.take(2).forEach { tag ->
-                            Surface(color = PriOrangeLight, shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.padding(horizontal = 2.dp)) {
-                                Text(tag, fontSize = 8.sp, color = PriOrange, fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                    Text("👤 ${recipe.portions}p", fontSize = 9.sp, color = TextMuted)
+                    val tags = recipe.parseTags()
+                    if (tags.isNotEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            modifier = Modifier.padding(top = 2.dp)) {
+                            tags.take(2).forEach { tag ->
+                                Surface(color = PriOrangeLight, shape = RoundedCornerShape(4.dp)) {
+                                    Text(tag, fontSize = 7.sp, color = PriOrange, fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp))
+                                }
                             }
                         }
                     }

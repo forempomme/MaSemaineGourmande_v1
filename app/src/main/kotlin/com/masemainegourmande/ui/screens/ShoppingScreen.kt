@@ -92,19 +92,27 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val inputColors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor      = PriOrange,
+                        unfocusedBorderColor    = BorderBeige,
+                        focusedTextColor        = Color.Black,
+                        unfocusedTextColor      = Color.Black,
+                        focusedPlaceholderColor = TextMuted,
+                        unfocusedPlaceholderColor = TextMuted
+                    )
                     OutlinedTextField(
                         value           = addName,
                         onValueChange   = { addName = it },
-                        placeholder     = { Text("Article…", fontSize = 12.sp, lineHeight = 14.sp) },
+                        placeholder     = { Text("Article…", fontSize = 12.sp) },
                         modifier        = Modifier.weight(1f),
                         shape           = RoundedCornerShape(8.dp),
                         singleLine      = true,
-                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
                             imeAction      = ImeAction.Next
                         ),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PriOrange)
+                        colors = inputColors
                     )
                     OutlinedTextField(
                         value           = addQty,
@@ -113,11 +121,12 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                         modifier        = Modifier.width(52.dp),
                         shape           = RoundedCornerShape(8.dp),
                         singleLine      = true,
-                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
                             imeAction    = ImeAction.Next
-                        )
+                        ),
+                        colors = inputColors
                     )
                     OutlinedTextField(
                         value           = addUnit,
@@ -126,9 +135,10 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                         modifier        = Modifier.width(52.dp),
                         shape           = RoundedCornerShape(8.dp),
                         singleLine      = true,
-                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                        textStyle       = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { addItem(); keyboard?.hide() })
+                        keyboardActions = KeyboardActions(onDone = { addItem(); keyboard?.hide() }),
+                        colors = inputColors
                     )
                     // ➕ icon button — aligned naturally by Row
                     Surface(
@@ -150,8 +160,8 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
             // ── Top actions bar ──────────────────────────
             item(key = "actions_bar") {
                 Row(
-                    Modifier.fillMaxWidth().background(BgCream)
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(

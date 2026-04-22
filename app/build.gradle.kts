@@ -15,10 +15,11 @@ android {
         minSdk        = 26
         targetSdk     = 35
 
-        // GITHUB_RUN_NUMBER auto-incrémente à chaque build → installation par-dessus possible
-        val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionCode = runNumber
-        versionName = "1.6.$runNumber"
+        // versionCode : GITHUB_RUN_NUMBER si dispo, sinon minutes depuis jan 2024 (toujours croissant)
+        val runNumber  = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        val epochMin   = ((System.currentTimeMillis() / 1000L - 1704067200L) / 60L).toInt()
+        versionCode    = runNumber ?: epochMin
+        versionName    = "1.6.${runNumber ?: epochMin}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
