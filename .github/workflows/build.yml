@@ -35,24 +35,24 @@ jobs:
           while [ $attempt -le $max_attempts ]; do
             echo "Download attempt $attempt/$max_attempts..."
             curl -fsSL \
-            "https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar" \
-            -o gradle/wrapper/gradle-wrapper.jar
-          
-          # Validate JAR integrity
-          if file gradle/wrapper/gradle-wrapper.jar | grep -q "Zip archive"; then
-            echo "✓ JAR downloaded successfully"
-            break
-          else
-            echo "✗ Invalid JAR, retrying..."
-            rm -f gradle/wrapper/gradle-wrapper.jar
-            attempt=$((attempt + 1))
-            sleep 2
-          fi
+              "https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar" \
+              -o gradle/wrapper/gradle-wrapper.jar
+            
+            # Validate JAR integrity using 'jar' command (more reliable than 'file')
+            if jar -tf gradle/wrapper/gradle-wrapper.jar > /dev/null 2>&1; then
+              echo "✓ JAR downloaded successfully and is valid"
+              break
+            else
+              echo "✗ Invalid JAR or 'jar' command failed, retrying..."
+              rm -f gradle/wrapper/gradle-wrapper.jar
+              attempt=$((attempt + 1))
+              sleep 2
+            fi
           done
-    
+          
           # Final check
-          if ! file gradle/wrapper/gradle-wrapper.jar | grep -q "Zip archive"; then
-            echo "Failed to download valid gradle-wrapper.jar"
+          if ! jar -tf gradle/wrapper/gradle-wrapper.jar > /dev/null 2>&1; then
+            echo "Failed to download valid gradle-wrapper.jar after $max_attempts attempts"
             exit 1
           fi
       
