@@ -31,39 +31,43 @@ jobs:
           mkdir -p gradle/wrapper
           max_attempts=3
           attempt=1
-          download_success=false
           
           while [ $attempt -le $max_attempts ]; do
             echo "Tentative de téléchargement $attempt/$max_attempts..."
             
-            # Téléchargement
-            if ! curl -fsSL \
-              "https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar" \
-              -o gradle/wrapper/gradle-wrapper.jar; then
-              echo "Échec du téléchargement curl."
+            # Téléchargement silencieux mais gestion de l'échec curl
+            if ! curl -fsSL "https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar; then
+              echo "Échec du curl."
               attempt=$((attempt + 1))
               sleep 2
               continue
             fi
             
-            # Validation avec la commande 'jar' (disponible car Java est installé)
-            # On essaie de lister le contenu. Si ça échoue, le fichier est corrompu.
-            if jar -tf gradle/wrapper/gradle-wrapper.jar > /dev/null 2>&1; then
+            # Vérification de la taille (le fichier doit faire plus de 0 octets)
+            if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
+              echo "Fichier vide."
+              attempt=$((attempt + 1))
+              sleep 2
+              continue
+            fi
+
+            # Validation avec unzip -t (plus robuste sur ubuntu-latest que jar ou file)
+            # unzip renvoie 0 si OK, non-zéro si KO
+            if unzip -t gradle/wrapper/gradle-wrapper.jar > /dev/null 2>&1; then
               echo "✓ JAR téléchargé et validé avec succès."
-              download_success=true
-              break
+              # Sortie immédiate de la boucle et succès du step
+              exit 0
             else
-              echo "✗ Le fichier JAR est invalide ou corrompu."
+              echo "✗ Fichier invalide, suppression et réessai..."
               rm -f gradle/wrapper/gradle-wrapper.jar
               attempt=$((attempt + 1))
               sleep 2
             fi
           done
           
-          if [ "$download_success" = false ]; then
-            echo "::error::Échec critique : impossible de télécharger un gradle-wrapper.jar valide après $max_attempts tentatives."
-            exit 1
-          fi
+          # Si on arrive ici, c'est que toutes les tentatives ont échoué
+          echo "::error::Échec critique : impossible de télécharger un JAR valide."
+          exit 1
       
             - name: local.properties
               run: echo "sdk.dir=$ANDROID_HOME" > local.properties
