@@ -17,13 +17,23 @@ class ShoppingViewModel(private val repo: AppRepository) : ViewModel() {
     private val rawItems      = repo.observeActiveShoppingItems()
     private val rawCategories = repo.observeCategories()
 
+    // In-memory item order: catId -> ordered list of itemIds
+    // Survives config changes, resets on app restart (acceptable for shopping list)
+    private val _itemOrders = mutableMapOf<String, List<String>>()
+
     val groups: StateFlow<List<ShoppingGroup>> =
         combine(rawItems, rawCategories) { items, cats ->
-            cats.map { cat ->
+            cats.sortedBy { it.sortOrder }.map { cat ->
+                val catItems    = items.filter { it.categoryId == cat.id }
+                val orderedIds  = _itemOrders[cat.id]
+                val orderedItems = if (orderedIds != null) {
+                    orderedIds.mapNotNull { id -> catItems.find { it.id == id } } +
+                    catItems.filter { item -> orderedIds.none { it == item.id } }
+                } else catItems
                 ShoppingGroup(
                     categoryId   = cat.id,
                     categoryName = cat.name,
-                    items        = items.filter { it.categoryId == cat.id }
+                    items        = orderedItems
                 )
             }.filter { it.items.isNotEmpty() }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -83,17 +93,17 @@ class ShoppingViewModel(private val repo: AppRepository) : ViewModel() {
         }
     }
 
-    /** Move item [fromItemId] to position of [toItemId] within the same category [catId]. */
+    /** Move item [fromItemId] to position of [toItemId] — in-memory only, no DAO changes. */
     fun reorderItem(catId: String, fromItemId: String, toItemId: String) {
-        viewModelScope.launch {
-            val items = repo.getShoppingItemsByCategory(catId).toMutableList()
-            val fromIdx = items.indexOfFirst { it.id == fromItemId }
-            val toIdx   = items.indexOfFirst { it.id == toItemId }
-            if (fromIdx == -1 || toIdx == -1 || fromIdx == toIdx) return@launch
-            val moved = items.removeAt(fromIdx)
-            items.add(toIdx, moved)
-            items.forEachIndexed { i, item -> repo.updateShoppingItemOrder(item.id, i) }
-        }
+        val current = (_itemOrders[catId]
+            ?: groups.value.find { it.categoryId == catId }?.items?.map { it.id }
+            ?: return).toMutableList()
+        val fromIdx = current.indexOf(fromItemId)
+        val toIdx   = current.indexOf(toItemId)
+        if (fromIdx == -1 || toIdx == -1 || fromIdx == toIdx) return
+        val moved = current.removeAt(fromIdx)
+        current.add(toIdx, moved)
+        _itemOrders[catId] = current
     }
 
     // ── Share text ────────────────────────────────────────────
