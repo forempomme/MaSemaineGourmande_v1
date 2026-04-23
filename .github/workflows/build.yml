@@ -27,14 +27,34 @@ jobs:
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Force download gradle-wrapper.jar
-        # Toujours re-télécharger — évite un JAR corrompu ou absent dans le repo
-        run: |
-          mkdir -p gradle/wrapper
-          curl -fsSL \
-            "https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar" \
-            -o gradle/wrapper/gradle-wrapper.jar
-          # Vérification : le JAR doit commencer par PK (magic bytes d'un ZIP/JAR)
-          hexdump -C gradle/wrapper/gradle-wrapper.jar | head -1
+  run: |
+    mkdir -p gradle/wrapper
+    max_attempts=3
+    attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+      echo "Download attempt $attempt/$max_attempts..."
+      curl -fsSL \
+        "https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar" \
+        -o gradle/wrapper/gradle-wrapper.jar
+      
+      # Validate JAR integrity
+      if file gradle/wrapper/gradle-wrapper.jar | grep -q "Zip archive"; then
+        echo "✓ JAR downloaded successfully"
+        break
+      else
+        echo "✗ Invalid JAR, retrying..."
+        rm -f gradle/wrapper/gradle-wrapper.jar
+        attempt=$((attempt + 1))
+        sleep 2
+      fi
+    done
+    
+    # Final check
+    if ! file gradle/wrapper/gradle-wrapper.jar | grep -q "Zip archive"; then
+      echo "Failed to download valid gradle-wrapper.jar"
+      exit 1
+    fi
 
       - name: local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
