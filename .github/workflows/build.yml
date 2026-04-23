@@ -26,48 +26,12 @@ jobs:
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Force download gradle-wrapper.jar
-        run: |
-          mkdir -p gradle/wrapper
-          max_attempts=3
-          attempt=1
-          
-          while [ $attempt -le $max_attempts ]; do
-            echo "Tentative de téléchargement $attempt/$max_attempts..."
-            
-            # Téléchargement silencieux mais gestion de l'échec curl
-            if ! curl -fsSL "https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar; then
-              echo "Échec du curl."
-              attempt=$((attempt + 1))
-              sleep 2
-              continue
-            fi
-            
-            # Vérification de la taille (le fichier doit faire plus de 0 octets)
-            if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
-              echo "Fichier vide."
-              attempt=$((attempt + 1))
-              sleep 2
-              continue
-            fi
-
-            # Validation avec unzip -t (plus robuste sur ubuntu-latest que jar ou file)
-            # unzip renvoie 0 si OK, non-zéro si KO
-            if unzip -t gradle/wrapper/gradle-wrapper.jar > /dev/null 2>&1; then
-              echo "✓ JAR téléchargé et validé avec succès."
-              # Sortie immédiate de la boucle et succès du step
-              exit 0
-            else
-              echo "✗ Fichier invalide, suppression et réessai..."
-              rm -f gradle/wrapper/gradle-wrapper.jar
-              attempt=$((attempt + 1))
-              sleep 2
-            fi
-          done
-          
-          # Si on arrive ici, c'est que toutes les tentatives ont échoué
-          echo "::error::Échec critique : impossible de télécharger un JAR valide."
-          exit 1
+      # ÉTAPE MODIFIÉE : On ne télécharge plus le JAR manuellement.
+      # On s'assure juste que le script gradlew est exécutable.
+      # Le premier lancement de ./gradlew téléchargera automatiquement le bon JAR
+      # en se basant sur le fichier gradle/wrapper/gradle-wrapper.properties de votre repo.
+      - name: Permissions gradlew
+        run: chmod +x gradlew
 
       - name: local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
@@ -79,9 +43,6 @@ jobs:
           sed -i "s/versionCode\s*=.*/versionCode = $RUN_NUM/" app/build.gradle.kts
           sed -i "s/versionName\s*=.*/versionName = \"1.6.$RUN_NUM\"/" app/build.gradle.kts
           grep -A8 "defaultConfig" app/build.gradle.kts | head -10
-
-      - name: Permissions gradlew
-        run: chmod +x gradlew
 
       - name: Build APK
         run: ./gradlew assembleDebug --stacktrace
