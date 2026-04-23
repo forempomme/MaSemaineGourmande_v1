@@ -31,28 +31,34 @@ jobs:
           mkdir -p gradle/wrapper
           max_attempts=3
           attempt=1
+          success=false
           
           while [ $attempt -le $max_attempts ]; do
             echo "Download attempt $attempt/$max_attempts..."
-            curl -fsSL \
+            if ! curl -fsSL \
               "https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar" \
-              -o gradle/wrapper/gradle-wrapper.jar
+              -o gradle/wrapper/gradle-wrapper.jar; then
+              echo "✗ Curl failed"
+              attempt=$((attempt + 1))
+              sleep 2
+              continue
+            fi
             
-            # Validate JAR integrity using 'jar' command (more reliable than 'file')
+            # Validate using 'jar' (available because Java is installed)
             if jar -tf gradle/wrapper/gradle-wrapper.jar > /dev/null 2>&1; then
               echo "✓ JAR downloaded successfully and is valid"
+              success=true
               break
             else
-              echo "✗ Invalid JAR or 'jar' command failed, retrying..."
+              echo "✗ Invalid JAR file"
               rm -f gradle/wrapper/gradle-wrapper.jar
               attempt=$((attempt + 1))
               sleep 2
             fi
           done
           
-          # Final check
-          if ! jar -tf gradle/wrapper/gradle-wrapper.jar > /dev/null 2>&1; then
-            echo "Failed to download valid gradle-wrapper.jar after $max_attempts attempts"
+          if [ "$success" = false ]; then
+            echo "::error::Failed to download valid gradle-wrapper.jar after $max_attempts attempts"
             exit 1
           fi
       
