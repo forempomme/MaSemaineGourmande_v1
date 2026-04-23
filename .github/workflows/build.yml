@@ -68,28 +68,28 @@ jobs:
           # Si on arrive ici, c'est que toutes les tentatives ont échoué
           echo "::error::Échec critique : impossible de télécharger un JAR valide."
           exit 1
-      
-            - name: local.properties
-              run: echo "sdk.dir=$ANDROID_HOME" > local.properties
-      
-            - name: Patch versionCode
-              run: |
-                RUN_NUM="${{ github.run_number }}"
-                echo "Setting versionCode = $RUN_NUM"
-                sed -i "s/versionCode\s*=.*/versionCode = $RUN_NUM/" app/build.gradle.kts
-                sed -i "s/versionName\s*=.*/versionName = \"1.6.$RUN_NUM\"/" app/build.gradle.kts
-                grep -A8 "defaultConfig" app/build.gradle.kts | head -10
-      
-            - name: Permissions gradlew
-              run: chmod +x gradlew
-      
-            - name: Build APK
-              run: ./gradlew assembleDebug --stacktrace
-      
-            - name: Upload APK
-              if: success()
-              uses: actions/upload-artifact@v4
-              with:
-                name: app-debug
-                path: app/build/outputs/apk/debug/app-debug.apk
-                retention-days: 14
+
+      - name: local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Patch versionCode
+        run: |
+          RUN_NUM="${{ github.run_number }}"
+          echo "Setting versionCode = $RUN_NUM"
+          sed -i "s/versionCode\s*=.*/versionCode = $RUN_NUM/" app/build.gradle.kts
+          sed -i "s/versionName\s*=.*/versionName = \"1.6.$RUN_NUM\"/" app/build.gradle.kts
+          grep -A8 "defaultConfig" app/build.gradle.kts | head -10
+
+      - name: Permissions gradlew
+        run: chmod +x gradlew
+
+      - name: Build APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
