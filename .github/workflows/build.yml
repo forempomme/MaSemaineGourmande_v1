@@ -26,51 +26,33 @@ jobs:
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      # ÉTAPE CLÉ : Reconstruction du wrapper depuis le ZIP officiel
-      - name: Fix Gradle Wrapper (Ultimate Fix)
+      # ÉTAPE CLÉ : Installation et régénération du wrapper par Gradle lui-même
+      - name: Regenerate Gradle Wrapper
         run: |
-          echo "🔧 Reconstruction du Gradle Wrapper depuis la source officielle..."
+          echo "🚀 Régénération du wrapper par Gradle lui-même..."
           
           GRADLE_VERSION="8.11.1"
           DIST_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-          WRAPPER_DEST="gradle/wrapper/gradle-wrapper.jar"
           
-          mkdir -p gradle/wrapper
+          # 1. Télécharger et extraire la distribution complète
+          echo "📥 Téléchargement de Gradle ${GRADLE_VERSION}..."
+          curl -fsSL "$DIST_URL" -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp/
           
-          # 1. Télécharger le ZIP officiel (lien 100% fiable)
-          echo "📥 Téléchargement de la distribution complète..."
-          if ! curl -fsSL "$DIST_URL" -o /tmp/gradle.zip; then
-            echo "::error::Échec du téléchargement du ZIP officiel."
-            exit 1
-          fi
+          # Le dossier extrait s'appelle gradle-VERSION
+          GRADLE_HOME="/tmp/gradle-${GRADLE_VERSION}"
           
-          # 2. Extraire le fichier gradle-wrapper.jar depuis l'intérieur du ZIP
-          # Dans le ZIP, le chemin est généralement : gradle-VERSION/lib/gradle-wrapper-VERSION.jar
-          # On utilise un wildcard pour être sûr de trouver le bon fichier peu importe la version mineure
-          echo "📦 Extraction du gradle-wrapper.jar..."
+          # 2. Lancer Gradle manuellement pour régénérer le wrapper
+          # Cela va écraser le fichier gradle-wrapper.jar corrompu par la version exacte et valide
+          echo "🔄 Régénération des fichiers wrapper..."
+          "$GRADLE_HOME/bin/gradle" wrapper --gradle-version "$GRADLE_VERSION" --distribution-type bin
           
-          # On cherche le fichier qui contient "gradle-wrapper" dans le dossier lib
-          JAR_PATH=$(unzip -l /tmp/gradle.zip | grep "lib/gradle-wrapper.*\.jar" | head -1 | awk '{print $4}')
-          
-          if [ -z "$JAR_PATH" ]; then
-            echo "⚠ Fichier wrapper standard non trouvé, tentative avec gradle-launcher (fallback)..."
-            JAR_PATH=$(unzip -l /tmp/gradle.zip | grep "lib/gradle-launcher.*\.jar" | head -1 | awk '{print $4}')
-          fi
-          
-          if [ -n "$JAR_PATH" ]; then
-            echo "Fichier trouvé dans le ZIP : $JAR_PATH"
-            unzip -p /tmp/gradle.zip "$JAR_PATH" > "$WRAPPER_DEST"
-            
-            # Vérification de validité (doit être un vrai JAR ZIP)
-            if unzip -t "$WRAPPER_DEST" > /dev/null 2>&1; then
-              echo "✅ Gradle Wrapper généré avec succès !"
-              ls -lh "$WRAPPER_DEST"
-            else
-              echo "::error::Le fichier extrait n'est pas un JAR valide."
-              exit 1
-            fi
+          # 3. Vérification
+          if [ -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            SIZE=$(stat -c%s "gradle/wrapper/gradle-wrapper.jar")
+            echo "✅ Wrapper régénéré avec succès (Taille: $SIZE octets)"
           else
-            echo "::error::Impossible de trouver le fichier JAR dans la distribution ZIP."
+            echo "::error::Échec : Le fichier gradle-wrapper.jar n'a pas été créé."
             exit 1
           fi
 
