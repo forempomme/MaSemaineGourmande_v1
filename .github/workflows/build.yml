@@ -1,8 +1,6 @@
 name: Build APK
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -26,33 +24,18 @@ jobs:
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      # ÉTAPE CLÉ : Installation et régénération du wrapper par Gradle lui-même
       - name: Regenerate Gradle Wrapper
         run: |
-          echo "🚀 Régénération du wrapper par Gradle lui-même..."
-          
           GRADLE_VERSION="8.11.1"
           DIST_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-          
-          # 1. Télécharger et extraire la distribution complète
-          echo "📥 Téléchargement de Gradle ${GRADLE_VERSION}..."
           curl -fsSL "$DIST_URL" -o /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /tmp/
-          
-          # Le dossier extrait s'appelle gradle-VERSION
           GRADLE_HOME="/tmp/gradle-${GRADLE_VERSION}"
-          
-          # 2. Lancer Gradle manuellement pour régénérer le wrapper
-          # Cela va écraser le fichier gradle-wrapper.jar corrompu par la version exacte et valide
-          echo "🔄 Régénération des fichiers wrapper..."
           "$GRADLE_HOME/bin/gradle" wrapper --gradle-version "$GRADLE_VERSION" --distribution-type bin
-          
-          # 3. Vérification
           if [ -f "gradle/wrapper/gradle-wrapper.jar" ]; then
-            SIZE=$(stat -c%s "gradle/wrapper/gradle-wrapper.jar")
-            echo "✅ Wrapper régénéré avec succès (Taille: $SIZE octets)"
+            echo "✅ Wrapper OK ($(stat -c%s gradle/wrapper/gradle-wrapper.jar) octets)"
           else
-            echo "::error::Échec : Le fichier gradle-wrapper.jar n'a pas été créé."
+            echo "::error::gradle-wrapper.jar manquant"
             exit 1
           fi
 
@@ -62,10 +45,9 @@ jobs:
       - name: Patch versionCode
         run: |
           RUN_NUM="${{ github.run_number }}"
-          echo "Setting versionCode = $RUN_NUM"
           sed -i "s/versionCode\s*=.*/versionCode = $RUN_NUM/" app/build.gradle.kts
           sed -i "s/versionName\s*=.*/versionName = \"1.6.$RUN_NUM\"/" app/build.gradle.kts
-          grep -A8 "defaultConfig" app/build.gradle.kts | head -10
+          echo "versionCode = $RUN_NUM"
 
       - name: Permissions gradlew
         run: chmod +x gradlew
@@ -80,3 +62,4 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+          
