@@ -264,6 +264,8 @@ private fun CategoriesSheet(
                         border=BorderStroke(1.dp,BorderBeige), modifier=Modifier.fillMaxWidth().padding(vertical=3.dp)) {
                         Column(Modifier.padding(12.dp)) {
                             Row(verticalAlignment=Alignment.CenterVertically) {
+                                val emoji = catEmojiForName(cat.name)
+                                Text(emoji, fontSize=18.sp, modifier=Modifier.padding(end=6.dp))
                                 Text(cat.name, fontWeight=FontWeight.Bold, fontSize=14.sp, modifier=Modifier.weight(1f))
                                 IconButton(onClick={ editCat=cat }, modifier=Modifier.size(30.dp)) {
                                     Icon(Icons.Default.Edit, null, tint=PriOrange, modifier=Modifier.size(16.dp))
@@ -282,32 +284,54 @@ private fun CategoriesSheet(
         }
     }
     if(editCat!=null || showNew) {
-        CatEditDialog(editCat, onDismiss={ editCat=null; showNew=false }) { name, kws ->
-            if(editCat!=null) onUpsert(editCat!!.copy(name=name, keywords=kws.encodeJson()))
-            else onNew(name, kws)
+        CatEditDialog(editCat, onDismiss={ editCat=null; showNew=false }) { name, emoji, kws ->
+            if(editCat!=null) onUpsert(editCat!!.copy(name="${emoji} ${name}".trim(), keywords=kws.encodeJson()))
+            else onNew("${emoji} ${name}".trim(), kws)
             editCat=null; showNew=false
         }
     }
 }
 
 @Composable
-private fun CatEditDialog(cat: CategoryEntity?, onDismiss: ()->Unit, onSave: (String,List<String>)->Unit) {
-    var name by remember { mutableStateOf(cat?.name ?: "") }
-    var kws  by remember { mutableStateOf(cat?.parseKeywords()?.joinToString(", ") ?: "") }
+private fun CatEditDialog(cat: CategoryEntity?, onDismiss: ()->Unit, onSave: (String, String, List<String>)->Unit) {
+    var name  by remember { mutableStateOf(cat?.name ?: "") }
+    var emoji by remember { mutableStateOf(catEmojiForName(cat?.name ?: "")) }
+    var kws   by remember { mutableStateOf(cat?.parseKeywords()?.joinToString(", ") ?: "") }
     AlertDialog(onDismissRequest=onDismiss,
         title={ Text(if(cat!=null) "Modifier la catégorie" else "Nouvelle catégorie") },
         text={
             Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value=name, onValueChange={ name=it }, label={ Text("Nom *") },
-                    modifier=Modifier.fillMaxWidth(), shape=RoundedCornerShape(10.dp), singleLine=true)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value=emoji, onValueChange={ emoji=it }, label={ Text("Emoji") },
+                        modifier=Modifier.width(72.dp), shape=RoundedCornerShape(10.dp), singleLine=true)
+                    OutlinedTextField(value=name, onValueChange={ name=it }, label={ Text("Nom *") },
+                        modifier=Modifier.weight(1f), shape=RoundedCornerShape(10.dp), singleLine=true)
+                }
                 OutlinedTextField(value=kws, onValueChange={ kws=it }, label={ Text("Mots-clés (virgule)") },
                     modifier=Modifier.fillMaxWidth().heightIn(min=70.dp), shape=RoundedCornerShape(10.dp), maxLines=5)
             }
         },
         confirmButton={
-            Button(onClick={ if(name.isNotBlank()) onSave(name.trim(), kws.split(",").map{it.trim()}.filter{it.isNotBlank()}) },
+            Button(onClick={ if(name.isNotBlank()) onSave(name.trim(), emoji.trim(), kws.split(",").map{it.trim()}.filter{it.isNotBlank()}) },
                 enabled=name.isNotBlank(), colors=ButtonDefaults.buttonColors(containerColor=PriOrange)) { Text("Enregistrer") }
         },
         dismissButton={ TextButton(onClick=onDismiss) { Text("Annuler") } },
         shape=RoundedCornerShape(14.dp))
+}
+
+// Derive emoji from category name (kept as a simple helper)
+private fun catEmojiForName(name: String): String {
+    val n = name.lowercase()
+    return when {
+        n.startsWith("viande") || n.startsWith("poiss") || n.startsWith("volaille") -> "🥩"
+        n.startsWith("produit") || n.startsWith("lait") || n.startsWith("fromage") -> "🧀"
+        n.startsWith("œuf") || n.startsWith("oeuf") -> "🥚"
+        n.startsWith("fruit") || n.startsWith("légume") -> "🥦"
+        n.startsWith("féc") || n.startsWith("pâtes") || n.startsWith("riz") -> "🌾"
+        n.startsWith("épic") || n.startsWith("condiment") -> "🫙"
+        n.startsWith("bois") -> "🥤"
+        n.startsWith("boulang") || n.startsWith("pain") -> "🥖"
+        n.startsWith("autre") -> "🛍️"
+        else -> "📦"
+    }
 }
