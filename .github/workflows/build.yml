@@ -34,6 +34,8 @@ jobs:
           # Exécuter "gradle wrapper" dans un dossier VIDE pour éviter
           # que build.gradle.kts du projet ne soit lu (Android plugin non résolu)
           TMPDIR_WORK=$(mktemp -d)
+          # Gradle 8+ requiert un settings file même pour la tâche wrapper
+          touch "$TMPDIR_WORK/settings.gradle"
           "$GRADLE_BIN" --project-dir "$TMPDIR_WORK" wrapper \
             --gradle-version "$GRADLE_VERSION" --distribution-type bin
           # Copier le JAR et les properties dans le projet
