@@ -6,16 +6,14 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -31,13 +29,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.masemainegourmande.data.model.CategoryEntity
 import com.masemainegourmande.data.model.ShoppingItemEntity
 import com.masemainegourmande.ui.theme.*
 import com.masemainegourmande.viewmodel.ShoppingGroup
@@ -58,6 +56,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
     val groups     by vm.groups.collectAsState()
     val totalCount by vm.totalCount.collectAsState()
     val context     = LocalContext.current
+    val density     = LocalDensity.current
 
     // Inline add state
     var addName  by remember { mutableStateOf("") }
@@ -69,11 +68,22 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
     var showMenu  by remember { mutableStateOf(false) }
     var undoItem  by remember { mutableStateOf<ShoppingItemEntity?>(null) }
 
-    // Drag state: track which category / which item is being dragged
-    var draggingCatId   by remember { mutableStateOf<String?>(null) }
-    var dragOverCatId   by remember { mutableStateOf<String?>(null) }
-    var draggingItemKey by remember { mutableStateOf<String?>(null) } // "catId::itemId"
-    var dragOverItemKey by remember { mutableStateOf<String?>(null) }
+    // ── Drag-drop: local mutable copy of groups for live reordering ──────────
+    // Categories: local order updated live during drag, committed to VM on release
+    val localGroups = remember { mutableStateListOf<ShoppingGroup>() }
+    LaunchedEffect(groups) {
+        // Only sync from VM when not dragging
+        localGroups.clear(); localGroups.addAll(groups)
+    }
+
+    // Per-category item drag state
+    val itemDragDelta  = remember { mutableStateMapOf<String, Float>() }
+    val itemDragFrom   = remember { mutableStateMapOf<String, Int>() }   // catId -> dragging index
+    val catDragDelta   = remember { mutableFloatStateOf(0f) }
+    var catDragFromIdx by remember { mutableStateOf<Int?>(null) }
+
+    val itemHeightPx = with(density) { 48.dp.toPx() }
+    val catHeightPx  = with(density) { 42.dp.toPx() }
 
     LaunchedEffect(undoItem) {
         if (undoItem != null) { delay(3000); undoItem = null }
@@ -86,42 +96,57 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
         }
     }
 
-    // Drop handlers
-    fun onCatDrop() {
-        val from = draggingCatId; val to = dragOverCatId
-        if (from != null && to != null && from != to) vm.reorderCategory(from, to)
-        draggingCatId = null; dragOverCatId = null
-    }
-    fun onItemDrop(catId: String) {
-        val fromKey = draggingItemKey; val toKey = dragOverItemKey
-        if (fromKey != null && toKey != null && fromKey != toKey) {
-            val fromId = fromKey.substringAfter("::")
-            val toId   = toKey.substringAfter("::")
-            vm.reorderItem(catId, fromId, toId)
-        }
-        draggingItemKey = null; dragOverItemKey = null
-    }
+    val inputColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor        = PriOrange,
+        unfocusedBorderColor      = BorderBeige,
+        focusedTextColor          = Color.Black,
+        unfocusedTextColor        = Color.Black,
+        focusedContainerColor     = MaterialTheme.colorScheme.surface,
+        unfocusedContainerColor   = MaterialTheme.colorScheme.surface,
+        focusedPlaceholderColor   = TextMuted,
+        unfocusedPlaceholderColor = TextMuted
+    )
 
     Box(Modifier.fillMaxSize().background(BgCream)) {
-        LazyColumn(Modifier.fillMaxSize()) {
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 80.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
 
-            // ── Inline add bar ─────────────────────────────────
+            // ── 1. Action bar (count + icons) ─────────────────────
+            item(key = "action_bar") {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        if (totalCount > 0) "🛒  $totalCount article${if (totalCount > 1) "s" else ""}"
+                        else "🛒  Liste vide",
+                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        color = TextMuted, modifier = Modifier.weight(1f)
+                    )
+                    if (groups.isNotEmpty()) {
+                        IconButton(onClick = { showShare = true }, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Share, null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.MoreVert, null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+                HorizontalDivider(color = BorderBeige)
+            }
+
+            // ── 2. Inline add bar ──────────────────────────────────
             item(key = "add_bar") {
-                val inputColors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor       = PriOrange,
-                    unfocusedBorderColor     = BorderBeige,
-                    focusedTextColor         = Color.Black,
-                    unfocusedTextColor       = Color.Black,
-                    focusedContainerColor    = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor  = MaterialTheme.colorScheme.surface,
-                    focusedPlaceholderColor  = TextMuted,
-                    unfocusedPlaceholderColor = TextMuted
-                )
                 Row(
                     Modifier.background(MaterialTheme.colorScheme.surface)
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment     = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = addName, onValueChange = { addName = it },
@@ -132,8 +157,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                         keyboardOptions = KeyboardOptions(
                             capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
                             imeAction = androidx.compose.ui.text.input.ImeAction.Next
-                        ),
-                        colors = inputColors
+                        ), colors = inputColors
                     )
                     OutlinedTextField(
                         value = addQty, onValueChange = { addQty = it },
@@ -143,9 +167,8 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                         textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
-                            imeAction    = androidx.compose.ui.text.input.ImeAction.Next
-                        ),
-                        colors = inputColors
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Next
+                        ), colors = inputColors
                     )
                     OutlinedTextField(
                         value = addUnit, onValueChange = { addUnit = it },
@@ -165,45 +188,20 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.Add, "Ajouter",
-                                tint     = if (addName.isNotBlank()) Color.White else PriOrange,
+                                tint = if (addName.isNotBlank()) Color.White else PriOrange,
                                 modifier = Modifier.size(20.dp))
                         }
                     }
                 }
                 HorizontalDivider(color = BorderBeige)
+                Spacer(Modifier.height(8.dp))
             }
 
-            // ── Action bar (count + share) ──────────────────────
-            item(key = "action_bar") {
-                Row(
-                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
-                        .padding(horizontal = 14.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        if (totalCount > 0) "🛒 $totalCount article${if (totalCount > 1) "s" else ""}"
-                        else "🛒 Liste vide",
-                        fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                        color = TextMuted, modifier = Modifier.weight(1f)
-                    )
-                    if (groups.isNotEmpty()) {
-                        IconButton(onClick = { showShare = true }, modifier = Modifier.size(30.dp)) {
-                            Icon(Icons.Default.Share, null, tint = TextMuted, modifier = Modifier.size(16.dp))
-                        }
-                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(30.dp)) {
-                            Icon(Icons.Default.MoreVert, null, tint = TextMuted, modifier = Modifier.size(16.dp))
-                        }
-                    }
-                }
-                HorizontalDivider(color = BorderBeige)
-            }
-
-            // ── Empty state ─────────────────────────────────────
-            if (groups.isEmpty()) {
+            // ── 3. Empty state ─────────────────────────────────────
+            if (localGroups.isEmpty()) {
                 item(key = "empty") {
                     Column(
-                        Modifier.fillMaxWidth().padding(top = 64.dp),
+                        Modifier.fillMaxWidth().padding(top = 60.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -215,89 +213,146 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                     }
                 }
             } else {
-                // ── Categories with drag-drop ────────────────────
-                groups.forEachIndexed { catIdx, group ->
-                    // Category header — long-press to drag
-                    stickyHeader(key = "hdr_${group.categoryId}") {
-                        val isHovered = dragOverCatId == group.categoryId && draggingCatId != group.categoryId
-                        Row(
-                            Modifier.fillMaxWidth()
-                                .background(if (isHovered) PriOrangeLight else BgCream)
-                                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 5.dp)
-                                .pointerInput(group.categoryId) {
-                                    detectDragGesturesAfterLongPress(
-                                        onDragStart = { draggingCatId = group.categoryId },
-                                        onDrag = { change, _ ->
-                                            change.consume()
-                                            // Simple: mark hovered via offset (approximation)
-                                        },
-                                        onDragEnd   = { onCatDrop() },
-                                        onDragCancel = { draggingCatId = null; dragOverCatId = null }
-                                    )
-                                },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
-                        ) {
-                            Text("⠿", fontSize = 14.sp, color = TextMuted.copy(alpha = 0.5f))
-                            Text(catEmoji(group.categoryName), fontSize = 14.sp)
-                            Text(group.categoryName.uppercase(),
-                                fontWeight = FontWeight.ExtraBold, fontSize = 10.sp,
-                                color = TextMuted, letterSpacing = 0.8.sp,
-                                modifier = Modifier.weight(1f))
-                            Surface(color = PriOrangeLight, shape = RoundedCornerShape(20.dp)) {
-                                Text(group.items.size.toString(), fontSize = 10.sp,
-                                    fontWeight = FontWeight.ExtraBold, color = PriOrange,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp))
-                            }
-                        }
-                    }
 
-                    // Items
-                    group.items.forEachIndexed { itemIdx, item ->
-                        val itemKey = "${group.categoryId}::${item.id}"
-                        item(key = item.id) {
-                            val isDragging = draggingItemKey == itemKey
-                            val isHovered  = dragOverItemKey == itemKey && !isDragging
-                            Card(
-                                shape  = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isDragging) PriOrangeLight
-                                                     else if (isHovered) MaterialTheme.colorScheme.surfaceVariant
-                                                     else MaterialTheme.colorScheme.surface
-                                ),
-                                border = BorderStroke(1.dp, if (isHovered) PriOrange else BorderBeige),
-                                modifier = Modifier.fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 3.dp)
-                                    .shadow(if (isDragging) 6.dp else 0.dp, RoundedCornerShape(12.dp))
-                                    .pointerInput(itemKey) {
+                // ── 4. Category groups ─────────────────────────────
+                localGroups.forEachIndexed { catIdx, group ->
+                    item(key = "group_${group.categoryId}") {
+                        val isCatDragging = catDragFromIdx == catIdx
+                        Card(
+                            shape  = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, BorderBeige),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .shadow(if (isCatDragging) 8.dp else 0.dp, RoundedCornerShape(14.dp))
+                        ) {
+                            // ── Category header ── BgCream background, left-aligned
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .background(BgCream)
+                                    .padding(horizontal = 12.dp, vertical = 9.dp)
+                                    // Long-press drag handle for category
+                                    .pointerInput(group.categoryId) {
                                         detectDragGesturesAfterLongPress(
-                                            onDragStart  = { draggingItemKey = itemKey },
-                                            onDrag       = { change, _ -> change.consume(); dragOverItemKey = itemKey },
-                                            onDragEnd    = { onItemDrop(group.categoryId) },
-                                            onDragCancel = { draggingItemKey = null; dragOverItemKey = null }
+                                            onDragStart = {
+                                                catDragFromIdx = catIdx
+                                                catDragDelta.floatValue = 0f
+                                            },
+                                            onDrag = { change, drag ->
+                                                change.consume()
+                                                catDragDelta.floatValue += drag.y
+                                                val steps = (catDragDelta.floatValue / catHeightPx).toInt()
+                                                if (steps != 0) {
+                                                    val from = catDragFromIdx ?: return@detectDragGesturesAfterLongPress
+                                                    val to   = (from + steps).coerceIn(0, localGroups.size - 1)
+                                                    if (to != from) {
+                                                        val moved = localGroups.removeAt(from)
+                                                        localGroups.add(to, moved)
+                                                        catDragFromIdx = to
+                                                        catDragDelta.floatValue -= steps * catHeightPx
+                                                    }
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                // Persist new category order to VM
+                                                val from = catDragFromIdx
+                                                if (from != null && localGroups.size == groups.size) {
+                                                    val fromGroup = localGroups[from]
+                                                    val origGroup = groups.find { it.categoryId == fromGroup.categoryId }
+                                                    if (origGroup != null && groups.indexOf(origGroup) != from) {
+                                                        vm.reorderCategory(origGroup.categoryId, localGroups[from].categoryId)
+                                                    }
+                                                }
+                                                catDragFromIdx = null
+                                            },
+                                            onDragCancel = { catDragFromIdx = null }
+                                        )
+                                    },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                Text("⠿", fontSize = 14.sp, color = TextBrown.copy(alpha = 0.4f))
+                                Text(catEmoji(group.categoryName), fontSize = 14.sp)
+                                Text(group.categoryName.uppercase(),
+                                    fontWeight = FontWeight.ExtraBold, fontSize = 10.sp,
+                                    color = TextBrown, letterSpacing = 0.8.sp,
+                                    modifier = Modifier.weight(1f))
+                                Surface(color = PriOrange, shape = RoundedCornerShape(20.dp)) {
+                                    Text(group.items.size.toString(), fontSize = 10.sp,
+                                        fontWeight = FontWeight.ExtraBold, color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp))
+                                }
+                            }
+
+                            HorizontalDivider(color = BorderBeige, thickness = 1.dp)
+
+                            // ── Items ── CardSurface background, no gap between them
+                            group.items.forEachIndexed { itemIdx, item ->
+                                val draggingIdx = itemDragFrom[group.categoryId]
+                                val isDraggingThis = draggingIdx == itemIdx
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .background(
+                                            if (isDraggingThis) PriOrangeLight
+                                            else MaterialTheme.colorScheme.surface
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                                        .pointerInput("${group.categoryId}_$itemIdx") {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = {
+                                                    itemDragFrom[group.categoryId] = itemIdx
+                                                    itemDragDelta[group.categoryId] = 0f
+                                                },
+                                                onDrag = { change, drag ->
+                                                    change.consume()
+                                                    val prev = itemDragDelta[group.categoryId] ?: 0f
+                                                    val next = prev + drag.y
+                                                    itemDragDelta[group.categoryId] = next
+                                                    val steps = (next / itemHeightPx).toInt()
+                                                    if (steps != 0) {
+                                                        val curFrom = itemDragFrom[group.categoryId] ?: return@detectDragGesturesAfterLongPress
+                                                        val curTo = (curFrom + steps).coerceIn(0, group.items.size - 1)
+                                                        if (curTo != curFrom) {
+                                                            vm.reorderItem(
+                                                                group.categoryId,
+                                                                group.items[curFrom].id,
+                                                                group.items[curTo].id
+                                                            )
+                                                            itemDragFrom[group.categoryId] = curTo
+                                                            itemDragDelta[group.categoryId] = next - steps * itemHeightPx
+                                                        }
+                                                    }
+                                                },
+                                                onDragEnd   = { itemDragFrom.remove(group.categoryId) },
+                                                onDragCancel = { itemDragFrom.remove(group.categoryId) }
+                                            )
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("⠿", fontSize = 12.sp, color = BorderBeige,
+                                        modifier = Modifier.align(Alignment.CenterVertically))
+                                    Text(item.name, fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium, color = TextBrown,
+                                        modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    // Quantity right-aligned with unit
+                                    if (item.qty > 0 || item.unit.isNotBlank()) {
+                                        Text(
+                                            buildString {
+                                                if (item.qty > 0) append(fmtQty(item.qty))
+                                                if (item.unit.isNotBlank()) {
+                                                    if (item.qty > 0) append(" ")
+                                                    append(item.unit)
+                                                }
+                                            },
+                                            fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                            color = PriOrange, textAlign = TextAlign.End
                                         )
                                     }
-                            ) {
-                                Row(
-                                    Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Text("⠿", fontSize = 12.sp, color = BorderBeige)
-                                    Text(item.name, fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold, color = TextBrown,
-                                        modifier = Modifier.weight(1f), maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis)
-                                    if (item.qty > 0) {
-                                        Text("${fmtQty(item.qty)} ${item.unit}".trim(),
-                                            fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                                            color = PriOrange)
-                                    }
                                     if (item.fromRecipeId != null) {
-                                        Surface(color = PriOrangeLight, shape = RoundedCornerShape(4.dp)) {
-                                            Text("📅", fontSize = 9.sp,
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
-                                        }
+                                        Text("📅", fontSize = 9.sp, color = TextMuted)
                                     }
                                     IconButton(onClick = { undoItem = item; vm.deleteItem(item.id) },
                                         modifier = Modifier.size(24.dp)) {
@@ -305,16 +360,23 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                             modifier = Modifier.size(14.dp))
                                     }
                                 }
+                                // Separator between items (not after last)
+                                if (itemIdx < group.items.size - 1) {
+                                    HorizontalDivider(
+                                        color = BorderBeige.copy(alpha = 0.5f),
+                                        thickness = 0.5.dp,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    )
+                                }
                             }
                         }
+                        Spacer(Modifier.height(8.dp))
                     }
-                    item(key = "sp_${group.categoryId}") { Spacer(Modifier.height(6.dp)) }
                 }
-                item(key = "bottom_pad") { Spacer(Modifier.height(72.dp)) }
             }
         }
 
-        // ── Undo snackbar ───────────────────────────────────────
+        // ── Undo snackbar ──────────────────────────────────────────
         AnimatedVisibility(
             visible  = undoItem != null,
             enter    = slideInVertically { it } + fadeIn(),
@@ -340,7 +402,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
         }
     }
 
-    if (showShare) ShareSheet(vm.buildShareText(groups), { showShare = false }, context)
+    if (showShare) ShareSheet(vm.buildShareText(localGroups.toList()), { showShare = false }, context)
     if (showMenu) {
         AlertDialog(onDismissRequest = { showMenu = false },
             title = { Text("Actions") },
