@@ -35,7 +35,8 @@ jobs:
             -o /tmp/gradle.zip
 
           # Lister les JARs "wrapper" dans la distribution pour trouver le bon chemin
-          JAR_PATH=$(unzip -l /tmp/gradle.zip | awk '/wrapper.*\.jar/{print $NF}' | head -1)
+          # Chercher le JAR exact : gradle-wrapper-VERSION.jar (pas shared, pas launcher)
+          JAR_PATH=$(unzip -l /tmp/gradle.zip | awk '{print $NF}' | grep -E "gradle-wrapper-[0-9]+\.[0-9]+(\.[0-9]+)?\.jar$" | head -1)
           echo "JAR trouvé dans le zip : $JAR_PATH"
 
           if [ -n "$JAR_PATH" ]; then
@@ -61,11 +62,11 @@ jobs:
             )
           fi
 
-          # Vérification : le JAR doit commencer par PK (magic bytes ZIP/JAR)
-          MAGIC=$(xxd -l 2 gradle/wrapper/gradle-wrapper.jar | awk '{print $2$3}')
-          echo "Magic bytes : $MAGIC (attendu: 504b)"
-          if [ "$MAGIC" != "504b" ]; then
-            echo "::error::gradle-wrapper.jar invalide (magic=$MAGIC)"
+          # Vérification : file(1) doit reconnaître un ZIP/JAR
+          FILE_TYPE=$(file gradle/wrapper/gradle-wrapper.jar)
+          echo "Type : $FILE_TYPE"
+          if ! echo "$FILE_TYPE" | grep -qi "zip\|java"; then
+            echo "::error::gradle-wrapper.jar invalide : $FILE_TYPE"
             exit 1
           fi
           echo "✅ gradle-wrapper.jar OK : $(stat -c%s gradle/wrapper/gradle-wrapper.jar) bytes"
