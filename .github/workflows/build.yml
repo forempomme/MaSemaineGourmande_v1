@@ -33,11 +33,14 @@ jobs:
           echo "✅ Wrapper: $(stat -c%s gradle/wrapper/gradle-wrapper.jar) bytes"
 
       - name: Restore stable debug keystore
-        # Ensures the APK is always signed with the same key → installation par-dessus possible
         run: |
           mkdir -p "$HOME/.android"
-          echo "${{ secrets.DEBUG_KEYSTORE_B64 }}" | base64 -d > "$HOME/.android/debug.keystore"
-          echo "✅ Keystore restauré"
+          KS_PATH="$HOME/.android/debug.keystore"
+          echo "${{ secrets.DEBUG_KEYSTORE_B64 }}" | base64 -d > "$KS_PATH"
+          echo "DEBUG_KEYSTORE_PATH=$KS_PATH" >> $GITHUB_ENV
+          echo "✅ Keystore restauré : $(stat -c%s $KS_PATH) bytes"
+          # Vérifier que le keystore est valide
+          keytool -list -keystore "$KS_PATH" -storepass android -alias androiddebugkey 2>&1 | head -5
 
       - name: local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
@@ -45,9 +48,10 @@ jobs:
       - name: Patch versionCode
         run: |
           RUN_NUM="${{ github.run_number }}"
-          sed -i "s/versionCode\s*=.*/versionCode = $RUN_NUM/" app/build.gradle.kts
-          sed -i "s/versionName\s*=.*/versionName = \"1.6.$RUN_NUM\"/" app/build.gradle.kts
-          echo "versionCode = $RUN_NUM"
+          sed -i "s/versionCode.*=.*/versionCode   = $RUN_NUM/" app/build.gradle.kts
+          sed -i "s/versionName.*=.*/versionName   = \"1.6.$RUN_NUM\"/" app/build.gradle.kts
+          echo "✅ versionCode = $RUN_NUM"
+          grep "versionCode\|versionName" app/build.gradle.kts
 
       - name: Permissions gradlew
         run: chmod +x gradlew
