@@ -27,9 +27,19 @@ jobs:
       - name: Regenerate Gradle Wrapper
         run: |
           GRADLE_VERSION="8.11.1"
+          # Télécharger la distribution Gradle
           curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /tmp/
-          "/tmp/gradle-${GRADLE_VERSION}/bin/gradle" wrapper --gradle-version "$GRADLE_VERSION" --distribution-type bin
+          GRADLE_BIN="/tmp/gradle-${GRADLE_VERSION}/bin/gradle"
+          # Exécuter "gradle wrapper" dans un dossier VIDE pour éviter
+          # que build.gradle.kts du projet ne soit lu (Android plugin non résolu)
+          TMPDIR_WORK=$(mktemp -d)
+          "$GRADLE_BIN" --project-dir "$TMPDIR_WORK" wrapper \
+            --gradle-version "$GRADLE_VERSION" --distribution-type bin
+          # Copier le JAR et les properties dans le projet
+          mkdir -p gradle/wrapper
+          cp "$TMPDIR_WORK/gradle/wrapper/gradle-wrapper.jar"        gradle/wrapper/gradle-wrapper.jar
+          cp "$TMPDIR_WORK/gradle/wrapper/gradle-wrapper.properties" gradle/wrapper/gradle-wrapper.properties
           echo "✅ Wrapper: $(stat -c%s gradle/wrapper/gradle-wrapper.jar) bytes"
 
       - name: Restore stable debug keystore
@@ -38,9 +48,8 @@ jobs:
           KS_PATH="$HOME/.android/debug.keystore"
           echo "${{ secrets.DEBUG_KEYSTORE_B64 }}" | base64 -d > "$KS_PATH"
           echo "DEBUG_KEYSTORE_PATH=$KS_PATH" >> $GITHUB_ENV
-          echo "✅ Keystore restauré : $(stat -c%s $KS_PATH) bytes"
-          # Vérifier que le keystore est valide
-          keytool -list -keystore "$KS_PATH" -storepass android -alias androiddebugkey 2>&1 | head -5
+          echo "✅ Keystore: $(stat -c%s $KS_PATH) bytes"
+          keytool -list -keystore "$KS_PATH" -storepass android 2>&1 | grep -i "alias\|SHA\|finger" | head -5
 
       - name: local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
@@ -51,7 +60,6 @@ jobs:
           sed -i "s/versionCode.*=.*/versionCode   = $RUN_NUM/" app/build.gradle.kts
           sed -i "s/versionName.*=.*/versionName   = \"1.6.$RUN_NUM\"/" app/build.gradle.kts
           echo "✅ versionCode = $RUN_NUM"
-          grep "versionCode\|versionName" app/build.gradle.kts
 
       - name: Permissions gradlew
         run: chmod +x gradlew
@@ -66,4 +74,3 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
-          
