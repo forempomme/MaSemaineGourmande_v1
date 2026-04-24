@@ -80,7 +80,19 @@ class ShoppingViewModel(private val repo: AppRepository) : ViewModel() {
 
     // ── Drag-drop reorder ────────────────────────────────────
 
-    /** Move category [fromId] to position of [toId]. All items in the category follow. */
+    /** Called after drag ends with the new desired index for a category. */
+    fun reorderCategoryByIndex(catId: String, newIndex: Int) {
+        viewModelScope.launch {
+            val cats = repo.getCategories().sortedBy { it.sortOrder }.toMutableList()
+            val fromIdx = cats.indexOfFirst { it.id == catId }
+            if (fromIdx == -1 || fromIdx == newIndex) return@launch
+            val moved = cats.removeAt(fromIdx)
+            cats.add(newIndex.coerceIn(0, cats.size), moved)
+            cats.forEachIndexed { i, cat -> repo.upsertCategory(cat.copy(sortOrder = i)) }
+        }
+    }
+
+    /** Legacy: keep for compatibility */
     fun reorderCategory(fromId: String, toId: String) {
         viewModelScope.launch {
             val cats = repo.getCategories().sortedBy { it.sortOrder }.toMutableList()
