@@ -18,10 +18,15 @@ object IngredientParser {
     // All recognised unit tokens
     private const val UNIT_PATTERN =
         "g|kg|mg|ml|l|cl|dl|oz|lb" +
-        "|c\\.s\\.|c\\.à\\.s\\.|cuill?\\.?\\s*(?:à|a)\\s*soupe|tbsp" +
-        "|c\\.c\\.|c\\.à\\.c\\.|cuill?\\.?\\s*(?:à|a)\\s*caf[eé]|tsp" +
+        // càs / càc shortcuts (must come BEFORE longer cuill patterns)
+        "|càs|c\.à\.s\.?|c\.s\.?|cuill?\.?\s*(?:à|a)\s*soupe|tbsp" +
+        "|càc|c\.à\.c\.?|c\.c\.?|cuill?\.?\s*(?:à|a)\s*caf[eé]|tsp" +
         "|cup|pincée?|sachet|gousse|tranche|branche|feuille|botte|bouquet" +
-        "|boîte|pot|verre|bol|filet|noix|morceau|pointe|paque?t"
+        "|boîte|boite|pot|verre|bol|filet|noix|morceau|pointe|paque?t" +
+        // Counting nouns treated as units so they stay with the ingredient name
+        "|quartiers?|tranches?|portions?|parts?|morceaux|morceaux?|demi|moitié" +
+        "|rondelles?|cubes?|lamelles?|lanières?|feuilles?|brins?|tiges?|gousses?" +
+        "|bâtonnets?|dés|rubans?|copeaux?|zestes?|jus"
 
     private val INGREDIENT_RE = Regex(
         """^(\d+(?:[,.]?\d+)?)\s*($UNIT_PATTERN)?\s*(?:de |d'|of )?(.+)$""",
@@ -58,9 +63,9 @@ object IngredientParser {
 
     /** Normalise verbose unit strings to compact forms. */
     private fun normaliseUnit(raw: String): String = when {
-        raw.isBlank()                                      -> ""
-        Regex("""cuill?.*soupe|c\.à\.s|c\.s\.|tbsp""", RegexOption.IGNORE_CASE).containsMatchIn(raw) -> "c.s."
-        Regex("""cuill?.*caf[eé]|c\.à\.c|c\.c\.|tsp""",  RegexOption.IGNORE_CASE).containsMatchIn(raw) -> "c.c."
-        else                                               -> raw.lowercase()
+        raw.isBlank() -> ""
+        Regex("""càs|cuill?.*soupe|c\.à\.s|c\.s\.|tbsp""", RegexOption.IGNORE_CASE).containsMatchIn(raw) -> "c.s."
+        Regex("""càc|cuill?.*caf[eé]|c\.à\.c|c\.c\.|tsp""", RegexOption.IGNORE_CASE).containsMatchIn(raw) -> "c.c."
+        else -> raw.lowercase().trimEnd('.')
     }
 }
