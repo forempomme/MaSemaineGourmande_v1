@@ -52,7 +52,7 @@ private val CAT_EMOJI = mapOf(
 private fun catEmoji(name: String) =
     CAT_EMOJI.entries.firstOrNull { name.startsWith(it.key) }?.value ?: "📦"
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ShoppingScreen(vm: ShoppingViewModel) {
     val groups     by vm.groups.collectAsState()
