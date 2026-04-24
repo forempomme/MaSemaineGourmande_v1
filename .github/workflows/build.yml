@@ -24,57 +24,10 @@ jobs:
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Install Gradle Wrapper JAR
-        run: |
-          mkdir -p gradle/wrapper
-
-          # Télécharger la distribution complète et extraire le JAR du wrapper
-          GRADLE_VERSION="8.11.1"
-          curl -fsSL \
-            "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
-            -o /tmp/gradle.zip
-
-          # Lister les JARs "wrapper" dans la distribution pour trouver le bon chemin
-          # Chercher le JAR exact : gradle-wrapper-VERSION.jar (pas shared, pas launcher)
-          JAR_PATH=$(unzip -l /tmp/gradle.zip | awk '{print $NF}' | grep -E "gradle-wrapper-[0-9]+\.[0-9]+(\.[0-9]+)?\.jar$" | head -1)
-          echo "JAR trouvé dans le zip : $JAR_PATH"
-
-          if [ -n "$JAR_PATH" ]; then
-            unzip -p /tmp/gradle.zip "$JAR_PATH" > gradle/wrapper/gradle-wrapper.jar
-          else
-            # Fallback : extraire directement par glob
-            unzip -p /tmp/gradle.zip \
-              "gradle-${GRADLE_VERSION}/lib/gradle-wrapper-${GRADLE_VERSION}.jar" \
-              > gradle/wrapper/gradle-wrapper.jar 2>/dev/null || \
-            unzip -j /tmp/gradle.zip \
-              "gradle-${GRADLE_VERSION}/lib/plugins/gradle-wrapper-${GRADLE_VERSION}.jar" \
-              -d gradle/wrapper/ 2>/dev/null || \
-            # Dernier recours : utiliser gradle wrapper dans un projet vide
-            (
-              GRADLE_BIN="/tmp/gradle-${GRADLE_VERSION}/bin/gradle"
-              unzip -q /tmp/gradle.zip -d /tmp/
-              TMP_PROJ=$(mktemp -d)
-              touch "$TMP_PROJ/settings.gradle"
-              "$GRADLE_BIN" --project-dir "$TMP_PROJ" wrapper \
-                --gradle-version "$GRADLE_VERSION" --distribution-type bin \
-                2>&1
-              cp "$TMP_PROJ/gradle/wrapper/gradle-wrapper.jar" gradle/wrapper/
-            )
-          fi
-
-          # Vérification : file(1) doit reconnaître un ZIP/JAR
-          FILE_TYPE=$(file gradle/wrapper/gradle-wrapper.jar)
-          echo "Type : $FILE_TYPE"
-          if ! echo "$FILE_TYPE" | grep -qi "zip\|java"; then
-            echo "::error::gradle-wrapper.jar invalide : $FILE_TYPE"
-            exit 1
-          fi
-          echo "✅ gradle-wrapper.jar OK : $(stat -c%s gradle/wrapper/gradle-wrapper.jar) bytes"
-
-          # Vérifier que la classe principale est présente
-          jar tf gradle/wrapper/gradle-wrapper.jar | grep -q "GradleWrapperMain" \
-            && echo "✅ GradleWrapperMain trouvé" \
-            || echo "⚠️  GradleWrapperMain absent"
+      # Action officielle Gradle — installe Gradle proprement, sans wrapper JAR
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
 
       - name: Restore stable debug keystore
         run: |
@@ -94,11 +47,9 @@ jobs:
           sed -i "s/versionName.*=.*/versionName   = \"1.6.$RUN_NUM\"/" app/build.gradle.kts
           echo "✅ versionCode = $RUN_NUM"
 
-      - name: Permissions gradlew
-        run: chmod +x gradlew
-
       - name: Build APK
-        run: ./gradlew assembleDebug --stacktrace
+        # Utilise "gradle" directement (installé par setup-gradle), pas ./gradlew
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
         if: success()
