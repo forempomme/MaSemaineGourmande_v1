@@ -14,23 +14,27 @@ android {
         applicationId = "com.masemainegourmande"
         minSdk        = 26
         targetSdk     = 35
-
-        // versionCode : GITHUB_RUN_NUMBER si dispo, sinon minutes depuis jan 2024 (toujours croissant)
-        val runNumber  = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
-        val epochMin   = ((System.currentTimeMillis() / 1000L - 1704067200L) / 60L).toInt()
-        versionCode    = runNumber ?: epochMin
-        versionName    = "1.6.${runNumber ?: epochMin}"
-
+        versionCode   = 1        // patché par sed dans le workflow
+        versionName   = "1.6.1"  // patché par sed dans le workflow
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Keystore stable → même signature à chaque build → mise à jour sans désinstaller
+    signingConfigs {
+        getByName("debug") {
+            storeFile     = file(System.getenv("DEBUG_KEYSTORE_PATH")
+                ?: "${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias      = "androiddebugkey"
+            keyPassword   = "android"
+        }
+    }
+
     buildTypes {
+        debug   { signingConfig = signingConfigs.getByName("debug") }
         release {
             isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
@@ -38,12 +42,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    kotlinOptions  { jvmTarget = "17" }
+    buildFeatures  { compose = true }
 }
 
 dependencies {
-    // ── Compose BOM ───────────────────────────────────────────
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
@@ -52,19 +55,16 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.7.6")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // ── AndroidX ──────────────────────────────────────────────
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.navigation:navigation-compose:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.core:core-ktx:1.15.0")
 
-    // ── Room ──────────────────────────────────────────────────
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    // ── Réseau & parsing ──────────────────────────────────────
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jsoup:jsoup:1.18.3")
