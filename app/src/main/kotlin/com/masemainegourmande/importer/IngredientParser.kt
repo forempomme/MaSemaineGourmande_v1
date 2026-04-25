@@ -45,6 +45,9 @@ object IngredientParser {
         "copeaux", "copeau",
         "cubes", "cube",
         "noix", "pot", "pointe", "demi", "parts?",
+        "poignées", "poignée",
+        "bottes", "botte",
+        "douzaines", "douzaine",
         "l(?!\\w)"   // litre — only when not followed by a word char
     ).joinToString("|")
 

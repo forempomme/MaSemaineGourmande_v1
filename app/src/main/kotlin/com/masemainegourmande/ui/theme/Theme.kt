@@ -66,12 +66,11 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun MsgTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    // Force light theme — l'appli a sa propre palette warm, le mode sombre système est ignoré
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = LightColorScheme,
         typography  = Typography(),
         content     = content
     )

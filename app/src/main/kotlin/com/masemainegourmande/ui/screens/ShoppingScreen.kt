@@ -217,7 +217,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                     shape  = RoundedCornerShape(10.dp),
                                     colors = CardDefaults.cardColors(
                                         containerColor = if (isItemDrag) PriOrangeLight
-                                                         else MaterialTheme.colorScheme.surface
+                                                         else Color(0xFFFFF4E8)
                                     ),
                                     border = BorderStroke(1.dp, if (isItemDrag) PriOrange else BorderBeige),
                                     modifier = Modifier
