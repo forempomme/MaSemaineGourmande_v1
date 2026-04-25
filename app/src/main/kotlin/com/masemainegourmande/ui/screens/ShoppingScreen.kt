@@ -146,7 +146,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                 Card(shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, BorderBeige)) {
-                    Column(Modifier.padding(horizontal = 14.dp, top = 10.dp, bottom = 12.dp),
+                    Column(Modifier.padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Ajouter manuellement", fontSize = 13.sp, fontWeight = FontWeight.Bold,
                             color = TextBrown)
@@ -341,7 +341,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                         overflow = TextOverflow.Ellipsis)
                                     // Quantity: number orange bold + unit normal
                                     if (item.qty > 0 || item.unit.isNotBlank()) {
-                                        Row(verticalAlignment = Alignment.Baseline,
+                                        Row(verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                             if (item.qty > 0) {
                                                 Text(fmtQty(item.qty), fontSize = 15.sp,
