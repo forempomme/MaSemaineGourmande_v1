@@ -432,21 +432,27 @@ internal fun RecipeDetailSheet(
                 StatChip("🍽️", cookCount.toString(), "fois cuisinée", highlight = true, modifier = Modifier.weight(1f))
             }
 
-            // Portions stepper
-            Card(colors = CardDefaults.cardColors(containerColor = PriOrangeLight), shape = RoundedCornerShape(10.dp)) {
-                Row(Modifier.fillMaxWidth().padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("👤 Portions", fontWeight = FontWeight.Bold, color = PriOrange)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconButton(onClick = { if (persons > 1) persons-- },
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = PriOrange)) {
-                            Icon(Icons.Default.Remove, null, tint = Color.White)
+            // Portions stepper — compact inline
+            Surface(color = Color(0x22AACCFF), shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, Color(0x44AACCFF))) {
+                Row(Modifier.fillMaxWidth().padding(horizontal=12.dp, vertical=8.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("👤", fontSize = 16.sp)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Portions", fontWeight = FontWeight.Bold, color = PriOrange,
+                        modifier = Modifier.weight(1f))
+                    Surface(color = PriOrangeDark, shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.size(28.dp).clickable(onClick = { if (persons > 1) persons-- })) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("−", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
-                        Text(persons.toString(), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                        IconButton(onClick = { persons++ },
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = PriOrange)) {
-                            Icon(Icons.Default.Add, null, tint = Color.White)
+                    }
+                    Text(persons.toString(), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp), textAlign = TextAlign.Center)
+                    Surface(color = PriOrangeDark, shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.size(28.dp).clickable(onClick = { persons++ })) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("+", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -455,7 +461,7 @@ internal fun RecipeDetailSheet(
             // Ingredients
             Text("🧂 Ingrédients", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             recipe.parseIngredients().forEach { ing ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(ing.name, fontSize = 14.sp)
                     val qty = if (ing.qty > 0) "${fmtQty(ing.qty * ratio)} ${ing.unit}".trim() else ing.unit.ifEmpty { "—" }
                     Text(qty, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = PriOrange)
@@ -512,15 +518,18 @@ internal fun RecipeDetailSheet(
 
 @Composable
 private fun StatChip(icon: String, value: String, label: String, highlight: Boolean = false, modifier: Modifier = Modifier) {
-    Card(shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCream),
+    Card(shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         border = BorderStroke(1.dp, BorderBeige), modifier = modifier) {
-        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(icon, fontSize = 20.sp)
-            Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp,
-                color = if (highlight) PriOrange else MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center)
-            Text(label, fontSize = 10.sp, color = TextMuted)
+        Row(Modifier.padding(horizontal=10.dp, vertical=7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(icon, fontSize = 16.sp)
+            Column {
+                Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
+                    color = if (highlight) PriOrange else TextBrown)
+                Text(label, fontSize = 9.sp, color = TextMuted)
+            }
         }
     }
 }

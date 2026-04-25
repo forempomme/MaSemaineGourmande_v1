@@ -165,38 +165,44 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                             verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(value=addName, onValueChange={addName=it},
                                 placeholder={Text("Nom de l'article…",fontSize=12.sp)},
-                                modifier=Modifier.weight(1f).height(48.dp),
+                                modifier=Modifier.weight(1f).height(44.dp),
                                 shape=RoundedCornerShape(8.dp), singleLine=true,
                                 keyboardOptions=KeyboardOptions(
                                     capitalization=androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
                                     imeAction=androidx.compose.ui.text.input.ImeAction.Next),
                                 colors=inputColors)
                             OutlinedTextField(value=addQty, onValueChange={addQty=it},
-                                placeholder={Text("Qté",fontSize=12.sp,
-                                    textAlign=TextAlign.Center, modifier=Modifier.fillMaxWidth())},
-                                modifier=Modifier.width(56.dp).height(48.dp),
+                                placeholder={Text("Qté", fontSize=12.sp,
+                                    color=TextMuted, textAlign=TextAlign.Center,
+                                    modifier=Modifier.fillMaxWidth())},
+                                modifier=Modifier.width(54.dp).height(44.dp),
                                 shape=RoundedCornerShape(8.dp), singleLine=true,
+                                textStyle=LocalTextStyle.current.copy(
+                                    color=TextBrown, fontSize=13.sp,
+                                    textAlign=TextAlign.Center),
                                 keyboardOptions=KeyboardOptions(
                                     keyboardType=androidx.compose.ui.text.input.KeyboardType.Decimal,
                                     imeAction=androidx.compose.ui.text.input.ImeAction.Next),
                                 colors=inputColors)
                             ExposedDropdownMenuBox(expanded=unitExpanded, onExpandedChange={unitExpanded=it},
-                                modifier=Modifier.width(76.dp)) {
+                                modifier=Modifier.width(80.dp)) {
                                 OutlinedTextField(value=addUnit, onValueChange={},
                                     readOnly=true, singleLine=true,
-                                    modifier=Modifier.menuAnchor().height(48.dp),
+                                    modifier=Modifier.menuAnchor().height(44.dp),
                                     shape=RoundedCornerShape(8.dp),
+                                    textStyle=LocalTextStyle.current.copy(
+                                        color=TextBrown, fontSize=12.sp,
+                                        textAlign=TextAlign.Center),
                                     trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded)},
                                     colors=OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor      = PriOrange,
-                                        unfocusedBorderColor    = BorderBeige,
-                                        focusedTextColor        = TextBrown,
-                                        unfocusedTextColor      = TextBrown,
-                                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant,
-                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        focusedBorderColor         = PriOrange,
+                                        unfocusedBorderColor       = BorderBeige,
+                                        focusedTextColor           = TextBrown,
+                                        unfocusedTextColor         = TextBrown,
+                                        focusedContainerColor      = MaterialTheme.colorScheme.surfaceVariant,
+                                        unfocusedContainerColor    = MaterialTheme.colorScheme.surfaceVariant,
                                         focusedTrailingIconColor   = TextMuted,
-                                        unfocusedTrailingIconColor = TextMuted,
-                                    ))
+                                        unfocusedTrailingIconColor = TextMuted))
                                 ExposedDropdownMenu(expanded=unitExpanded, onDismissRequest={unitExpanded=false}) {
                                     COMMON_UNITS.forEach { u ->
                                         DropdownMenuItem(text={Text(u,fontSize=13.sp)},
@@ -206,7 +212,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                             }
                             Surface(color=if(addName.isNotBlank()) PriOrangeDark else Color(0xFF2A3040),
                                 shape=RoundedCornerShape(8.dp),
-                                modifier=Modifier.size(48.dp).clickable(enabled=addName.isNotBlank()){addItem()}) {
+                                modifier=Modifier.size(44.dp).clickable(enabled=addName.isNotBlank()){addItem()}) {
                                 Box(contentAlignment=Alignment.Center) {
                                     Icon(Icons.Default.Add,null,
                                         tint=if(addName.isNotBlank()) Color.White else TextMuted,
@@ -406,7 +412,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                                 }
                                             )
                                         }
-                                        .padding(horizontal=12.dp, vertical=8.dp),
+                                        .padding(horizontal=12.dp, vertical=7.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
