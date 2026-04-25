@@ -283,8 +283,8 @@ private fun RecipeCard(
 ) {
     Card(
         shape    = RoundedCornerShape(12.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border   = BorderStroke(1.dp, BorderBeige),
+        colors   = CardDefaults.cardColors(containerColor = Color(0xFF1E2330)),
+        border   = BorderStroke(1.dp, Color(0xFF2E3848)),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
     ) {
         Box {

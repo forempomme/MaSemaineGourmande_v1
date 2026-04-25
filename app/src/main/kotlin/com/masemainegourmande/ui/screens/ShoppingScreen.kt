@@ -124,7 +124,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
     Box(Modifier.fillMaxSize().background(BgCream)) {
         LazyColumn(
             contentPadding = PaddingValues(start=14.dp, end=14.dp, top=12.dp, bottom=80.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             // ── Header row ────────────────────────────────────
@@ -187,7 +187,16 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                     modifier=Modifier.menuAnchor().height(48.dp),
                                     shape=RoundedCornerShape(8.dp),
                                     trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded)},
-                                    colors=inputColors)
+                                    colors=OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor      = PriOrange,
+                                        unfocusedBorderColor    = BorderBeige,
+                                        focusedTextColor        = TextBrown,
+                                        unfocusedTextColor      = TextBrown,
+                                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        focusedTrailingIconColor   = TextMuted,
+                                        unfocusedTrailingIconColor = TextMuted,
+                                    ))
                                 ExposedDropdownMenu(expanded=unitExpanded, onDismissRequest={unitExpanded=false}) {
                                     COMMON_UNITS.forEach { u ->
                                         DropdownMenuItem(text={Text(u,fontSize=13.sp)},
@@ -299,7 +308,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                             }
                                         )
                                     }
-                                    .padding(horizontal=14.dp, vertical=12.dp),
+                                    .padding(horizontal=12.dp, vertical=9.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -397,7 +406,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                                 }
                                             )
                                         }
-                                        .padding(horizontal=14.dp, vertical=11.dp),
+                                        .padding(horizontal=12.dp, vertical=8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {

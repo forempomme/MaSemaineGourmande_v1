@@ -223,7 +223,8 @@ private fun WeekCard(
 ) {
     Card(
         shape  = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = if(isCurrent) PriOrangeLight else Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = if(isCurrent) Color(0xFF1A2640) else Color(0xFF181C24)),
         border = BorderStroke(if(isCurrent) 2.dp else 1.dp, if(isCurrent) PriOrange else BorderBeige)
     ) {
         Column(Modifier.padding(horizontal=13.dp, vertical=11.dp)) {
@@ -277,7 +278,7 @@ private fun WeekCard(
 private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit, onMinus: ()->Unit, onPlus: ()->Unit) {
     Row(
         Modifier.fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(10.dp))
+            .background(Color(0xFF1F2430), RoundedCornerShape(10.dp))
             .border(1.dp, BorderBeige, RoundedCornerShape(10.dp))
             .padding(horizontal=10.dp, vertical=8.dp),
         verticalAlignment=Alignment.CenterVertically,
