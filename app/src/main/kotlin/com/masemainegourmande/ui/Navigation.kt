@@ -107,7 +107,7 @@ private fun AppHeader(activeRoute: String) {
     Box(
         Modifier
             .fillMaxWidth()
-            .background(Brush.linearGradient(listOf(PriOrange, PriOrangeDark)))
+            .background(Brush.linearGradient(listOf(NavGradientTop, NavGradientBot)))
             .statusBarsPadding()
             .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
@@ -134,7 +134,7 @@ private fun AppBottomNav(activeRoute: String, shoppingCount: Int = 0, onSelect: 
     Box(
         Modifier
             .fillMaxWidth()
-            .background(Brush.linearGradient(listOf(PriOrange, PriOrangeDark)))
+            .background(Brush.linearGradient(listOf(NavGradientTop, NavGradientBot)))
             .navigationBarsPadding()
     ) {
         Row(Modifier.fillMaxWidth()) {

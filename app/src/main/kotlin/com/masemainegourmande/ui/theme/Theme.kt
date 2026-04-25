@@ -4,64 +4,56 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// ── Palette Minuit Profond × Ardoise ─────────────────────────
+// ── Acier Nocturne — Ardoise 70% / Bleu 30% ──────────────────
 
-// Fonds (du plus foncé au plus clair)
-val BgCream        = Color(0xFF090C14)   // fond principal
-val CardSurface    = Color(0xFF0F1420)   // cartes
-val BorderBeige    = Color(0xFF1E2638)   // bordures
+val BgCream        = Color(0xFF111419)   // fond principal — gris ardoise-bleu
+val CardSurface    = Color(0xFF181C24)   // cartes
+val BorderBeige    = Color(0xFF2A3040)   // bordures
 
-// Accents
-val PriOrange      = Color(0xFF6AAAF8)   // bleu ciel — accent principal
-val PriOrangeLight = Color(0x226AAAF8)   // bleu transparent
-val PriOrangeDark  = Color(0xFF3D7AE0)   // bleu boutons
-val AccGreen       = Color(0xFF52D4A8)   // menthe — checks
-val AccGreenLight  = Color(0x2252D4A8)   // menthe transparent
+val PriOrange      = Color(0xFF7BA8E8)   // bleu acier doux — accent
+val PriOrangeLight = Color(0x227BA8E8)
+val PriOrangeDark  = Color(0xFF4878C8)   // bleu acier foncé — boutons
+val AccGreen       = Color(0xFF5CC4A0)   // vert-bleu — checks
+val AccGreenLight  = Color(0x225CC4A0)
 
-// Textes
-val TextBrown      = Color(0xFFEDF0FF)   // texte principal
-val TextMuted      = Color(0xFF6070A0)   // texte secondaire
-val StarYellow     = Color(0xFFF5C542)   // étoiles
+val TextBrown      = Color(0xFFE8EAF2)   // texte principal — blanc acier
+val TextMuted      = Color(0xFF7888A8)   // texte secondaire
+val StarYellow     = Color(0xFFF5C542)
 
-// ── Dark color scheme — toutes les couleurs explicites ────────
+// Couleurs nav uniquement pour Navigation.kt
+val NavGradientTop = Color(0xFF1E2B50)
+val NavGradientBot = Color(0xFF131C38)
+
 private val DarkScheme = darkColorScheme(
-    // Primary (bleu ciel)
-    primary              = Color(0xFF6AAAF8),
-    onPrimary            = Color(0xFF003060),
-    primaryContainer     = Color(0xFF1A3060),
-    onPrimaryContainer   = Color(0xFFBDD8FF),
+    primary              = Color(0xFF7BA8E8),
+    onPrimary            = Color(0xFF0D1E40),
+    primaryContainer     = Color(0xFF1A2848),
+    onPrimaryContainer   = Color(0xFFCCDDFF),
 
-    // Secondary (menthe)
-    secondary            = Color(0xFF52D4A8),
+    secondary            = Color(0xFF5CC4A0),
     onSecondary          = Color(0xFF003828),
-    secondaryContainer   = Color(0xFF0A2C22),
-    onSecondaryContainer = Color(0xFF9EFADA),
+    secondaryContainer   = Color(0xFF0A2422),
+    onSecondaryContainer = Color(0xFFA8EED8),
 
-    // Background & surface — couleurs sombres
-    background           = Color(0xFF090C14),
-    onBackground         = Color(0xFFEDF0FF),
-    surface              = Color(0xFF0F1420),
-    onSurface            = Color(0xFFEDF0FF),
-    surfaceVariant       = Color(0xFF161C2C),
-    onSurfaceVariant     = Color(0xFF6070A0),
+    background           = Color(0xFF111419),
+    onBackground         = Color(0xFFE8EAF2),
+    surface              = Color(0xFF181C24),
+    onSurface            = Color(0xFFE8EAF2),
+    surfaceVariant       = Color(0xFF1F2430),
+    onSurfaceVariant     = Color(0xFF7888A8),
 
-    // Outline
-    outline              = Color(0xFF1E2638),
-    outlineVariant       = Color(0xFF252E44),
+    outline              = Color(0xFF2A3040),
+    outlineVariant       = Color(0xFF384050),
 
-    // Error
     error                = Color(0xFFE57373),
     onError              = Color(0xFF410002),
     errorContainer       = Color(0xFF93000A),
     onErrorContainer     = Color(0xFFFFDAD6),
 
-    // Surface tones
-    surfaceTint          = Color(0xFF6AAAF8),
-    inverseSurface       = Color(0xFFE8ECFF),
-    inverseOnSurface     = Color(0xFF161C2C),
-    inversePrimary       = Color(0xFF2C72E0),
-
-    // Scrim
+    surfaceTint          = Color(0xFF7BA8E8),
+    inverseSurface       = Color(0xFFE4E6F0),
+    inverseOnSurface     = Color(0xFF1F2430),
+    inversePrimary       = Color(0xFF3A68C0),
     scrim                = Color(0xFF000000),
 )
 

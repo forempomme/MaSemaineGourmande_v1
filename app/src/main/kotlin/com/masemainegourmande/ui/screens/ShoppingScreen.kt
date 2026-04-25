@@ -195,7 +195,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                     }
                                 }
                             }
-                            Surface(color=if(addName.isNotBlank()) PriOrangeDark else Color(0xFF1E2638),
+                            Surface(color=if(addName.isNotBlank()) PriOrangeDark else Color(0xFF2A3040),
                                 shape=RoundedCornerShape(8.dp),
                                 modifier=Modifier.size(48.dp).clickable(enabled=addName.isNotBlank()){addItem()}) {
                                 Box(contentAlignment=Alignment.Center) {
@@ -246,7 +246,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                         Card(
                             shape  = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isCatDragging) Color(0xFF1A2848)
+                                containerColor = if (isCatDragging) Color(0xFF1E2640)
                                                  else MaterialTheme.colorScheme.surface),
                             border = BorderStroke(1.dp, if (isCatDragging) PriOrange else BorderBeige),
                             modifier = Modifier
@@ -348,7 +348,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                             shadowElevation = if (isItemDragging) 12f else 0f
                                         }
                                         .background(
-                                            if (isItemDragging) Color(0xFF1A2848)
+                                            if (isItemDragging) Color(0xFF1E2640)
                                             else Color.Transparent
                                         )
                                         .pointerInput("${group.categoryId}_$itemIdx") {
@@ -447,7 +447,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
             enter=slideInVertically{it}+fadeIn(),
             exit=slideOutVertically{it}+fadeOut(tween(250)),
             modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=80.dp)) {
-            Surface(color=Color(0xFF0A0E1A), shape=RoundedCornerShape(24.dp),
+            Surface(color=Color(0xFF131720), shape=RoundedCornerShape(24.dp),
                 shadowElevation=12.dp, modifier=Modifier.padding(horizontal=16.dp),
                 border=BorderStroke(1.dp, BorderBeige)) {
                 Row(Modifier.padding(start=16.dp,end=10.dp,top=10.dp,bottom=10.dp),
