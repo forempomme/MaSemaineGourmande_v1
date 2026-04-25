@@ -101,7 +101,9 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                     OutlinedTextField(
                         value = "",  // managed via showAdd dialog
                         onValueChange = {},
-                        placeholder = { Text("+ Ajouter un article", fontSize = 13.sp, color = PriOrange, fontWeight = FontWeight.Bold) },
+                        placeholder = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("+ Ajouter un article", fontSize = 13.sp, color = PriOrange, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        } },
                         modifier = Modifier.weight(1f).height(44.dp).clickable { showAdd = true },
                         enabled = false,
                         shape   = RoundedCornerShape(10.dp),

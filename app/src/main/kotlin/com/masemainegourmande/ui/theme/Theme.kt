@@ -14,9 +14,9 @@ val AccGreen       = Color(0xFF4A7A49)
 val AccGreenLight  = Color(0xFFD4EDD3)
 
 // Fond principal — ocre profond, même que l'onglet Options affiché par le Scaffold
-val BgCream        = Color(0xFFD9A96A)   // ambre foncé marqué
+val BgCream        = Color(0xFFC8924A)   // ambre plus foncé
 // Cartes — crème clair, fort contraste avec BgCream
-val CardSurface    = Color(0xFFFAEDD8)   // crème chaud
+val CardSurface    = Color(0xFFFFF8F0)   // crème très clair
 // Textes
 val TextBrown      = Color(0xFF2C1A0E)
 val TextMuted      = Color(0xFF7A5A42)

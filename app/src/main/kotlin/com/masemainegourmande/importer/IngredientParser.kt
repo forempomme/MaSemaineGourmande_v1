@@ -4,6 +4,7 @@ import com.masemainegourmande.data.model.Ingredient
 
 /**
  * Parses a raw ingredient string like "200 g de spaghetti" into a structured [Ingredient].
+ * Units are matched longest-first to avoid partial matches (e.g. "gousses" must beat "g").
  */
 object IngredientParser {
 
@@ -13,28 +14,43 @@ object IngredientParser {
         "⅛" to 0.125, "⅜" to 0.375, "⅝" to 0.625, "⅞" to 0.875
     )
 
-    // Use a raw string (triple-quoted) so backslashes are literal — no const val issues
-    private val INGREDIENT_RE by lazy {
-        val units = listOf(
-            "g", "kg", "mg", "ml", "l", "cl", "dl", "oz", "lb",
-            // càs / c.s. / c.à.s. / cuillère à soupe / tbsp
-            "càs", "c\\.à\\.s\\.?", "c\\.s\\.?",
-            "cuill?\\.?\\s*(?:à|a)\\s*soupe", "tbsp",
-            // càc / c.c. / c.à.c. / cuillère à café / tsp
-            "càc", "c\\.à\\.c\\.?", "c\\.c\\.?",
-            "cuill?\\.?\\s*(?:à|a)\\s*caf[eé]", "tsp",
-            // other measures
-            "cup", "pincée?", "sachet", "tranche", "branche", "feuille",
-            "botte", "bouquet", "boîte", "boite", "pot", "verre", "bol",
-            "filet", "noix", "morceau", "pointe", "paque?t",
-            // counting nouns treated as units
-            "quartiers?", "portions?", "parts?", "morceaux?", "demi",
-            "rondelles?", "cubes?", "lamelles?", "lanières?", "bâtonnets?",
-            "zestes?", "gousses?", "tiges?", "brins?", "copeaux?"
-        ).joinToString("|")
+    // Units ordered LONGEST-FIRST to prevent "g" from eating "gousses", "tranche" eating "tranches", etc.
+    private val UNIT_PATTERN: String = listOf(
+        "kg", "mg", "ml", "cl", "dl", "oz", "lb", "g",
+        "càs", "c\\.à\\.s\\.?", "c\\.s\\.?", "cuill?\\.?\\s*(?:à|a)\\s*soupe", "tbsp",
+        "càc", "c\\.à\\.c\\.?", "c\\.c\\.?", "cuill?\\.?\\s*(?:à|a)\\s*caf[eé]", "tsp",
+        "cup", "pincées", "pincée",
+        "sachets", "sachet",
+        "branches", "branche",
+        "feuilles", "feuille",
+        "bottes", "botte",
+        "bouquets", "bouquet",
+        "boîtes", "boîte", "boites", "boite",
+        "verres", "verre",
+        "bols", "bol",
+        "filets", "filet",
+        "morceaux", "morceau",
+        "paquets", "paquet",
+        "quartiers", "quartier",
+        "tranches", "tranche",
+        "portions", "portion",
+        "rondelles", "rondelle",
+        "lamelles", "lamelle",
+        "lanières", "lanière",
+        "bâtonnets", "bâtonnet",
+        "zestes", "zeste",
+        "gousses", "gousse",
+        "tiges", "tige",
+        "brins", "brin",
+        "copeaux", "copeau",
+        "cubes", "cube",
+        "noix", "pot", "pointe", "demi", "parts?",
+        "l(?!\\w)"   // litre — only when not followed by a word char
+    ).joinToString("|")
 
+    private val INGREDIENT_RE: Regex by lazy {
         Regex(
-            """^(\d+(?:[,.]?\d+)?)\s*($units)?\s*(?:de |d'|of )?(.+)$""",
+            """^(\d+(?:[,.]?\d+)?)\s*($UNIT_PATTERN)?\s*(?:de |d'|d'|of )?(.+)$""",
             RegexOption.IGNORE_CASE
         )
     }
