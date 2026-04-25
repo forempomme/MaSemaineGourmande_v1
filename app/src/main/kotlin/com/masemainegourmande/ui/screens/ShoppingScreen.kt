@@ -256,8 +256,6 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                     scaleX        = catScaleAnim
                                     scaleY        = catScaleAnim
                                     shadowElevation = if (isCatDragging) 20f else 2f
-                                    ambientShadowColor = if (isCatDragging) 0xFF6AAAF8.toInt() else 0
-                                    spotShadowColor    = if (isCatDragging) 0xFF3D7AE0.toInt() else 0
                                 }
                         ) {
                             // Category header — long-press to drag
