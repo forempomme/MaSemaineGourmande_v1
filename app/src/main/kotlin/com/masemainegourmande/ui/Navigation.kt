@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -57,6 +58,7 @@ fun MsgNavHost() {
     val allRecipes     by recipesVm.recipes.collectAsState()
     val allMeals       by planningVm.allMeals.collectAsState()
     val importHistory  by importVm.importHistory.collectAsState()
+    val shoppingCount  by shoppingVm.totalCount.collectAsState()
 
     val navController = rememberNavController()
     val backStack     by navController.currentBackStackEntryAsState()
@@ -91,7 +93,7 @@ fun MsgNavHost() {
             }
         }
 
-        AppBottomNav(activeRoute) { route ->
+        AppBottomNav(activeRoute, shoppingCount) { route ->
             navController.navigate(route) {
                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                 launchSingleTop = true; restoreState = true
@@ -127,7 +129,7 @@ private fun AppHeader(activeRoute: String) {
 }
 
 @Composable
-private fun AppBottomNav(activeRoute: String, onSelect: (String) -> Unit) {
+private fun AppBottomNav(activeRoute: String, shoppingCount: Int = 0, onSelect: (String) -> Unit) {
     // Same gradient as the top header
     Box(
         Modifier
@@ -146,7 +148,26 @@ private fun AppBottomNav(activeRoute: String, onSelect: (String) -> Unit) {
                         .padding(vertical = 10.dp, horizontal = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(tab.icon, fontSize = 22.sp, lineHeight = 24.sp)
+                    Box {
+                        Text(tab.icon, fontSize = 22.sp, lineHeight = 24.sp)
+                        if (tab.id == "shopping" && shoppingCount > 0) {
+                            Surface(
+                                color  = Color(0xFFE53935),
+                                shape  = CircleShape,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 6.dp, y = (-4).dp)
+                                    .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(horizontal = 3.dp)) {
+                                    Text(if (shoppingCount > 99) "99+" else shoppingCount.toString(),
+                                        color = Color.White, fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold, lineHeight = 14.sp)
+                                }
+                            }
+                        }
+                    }
                     Text(
                         tab.label, fontSize = 10.sp,
                         fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Normal,
