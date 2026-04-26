@@ -110,9 +110,10 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
     val itemDragOffPx   = remember { mutableStateMapOf<String, Float>() }
 
     // Add bar
-    var addName  by remember { mutableStateOf("") }
-    var addQty   by remember { mutableStateOf("") }
-    var addUnit  by remember { mutableStateOf("") }
+    var addName       by remember { mutableStateOf("") }
+    var addQty        by remember { mutableStateOf("") }
+    var addUnit       by remember { mutableStateOf("pcs") }
+    var unitExpanded  by remember { mutableStateOf(false) }
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     var showShare by remember { mutableStateOf(false) }
     var showMenu  by remember { mutableStateOf(false) }
@@ -180,45 +181,85 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Ajouter manuellement", fontSize = 13.sp,
                             fontWeight = FontWeight.Bold, color = TextBrown)
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(value=addName, onValueChange={addName=it},
-                                placeholder={Text("Nom de l'article…", fontSize=11.sp)},
-                                modifier=Modifier.weight(1f).height(44.dp),
-                                shape=RoundedCornerShape(8.dp), singleLine=true,
-                                textStyle=LocalTextStyle.current.copy(fontSize=12.sp, color=TextBrown),
-                                keyboardOptions=KeyboardOptions(
-                                    capitalization=androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
-                                    imeAction=androidx.compose.ui.text.input.ImeAction.Next),
-                                colors=fieldColors)
-                            OutlinedTextField(value=addQty, onValueChange={addQty=it},
-                                placeholder={Box(Modifier.fillMaxWidth(), contentAlignment=Alignment.Center){
-                                    Text("Qté", fontSize=11.sp, color=TextMuted)}},
-                                modifier=Modifier.width(56.dp).height(44.dp),
-                                shape=RoundedCornerShape(8.dp), singleLine=true,
-                                textStyle=LocalTextStyle.current.copy(fontSize=12.sp, color=TextBrown,
-                                    textAlign=TextAlign.Center),
-                                keyboardOptions=KeyboardOptions(
-                                    keyboardType=androidx.compose.ui.text.input.KeyboardType.Decimal,
-                                    imeAction=androidx.compose.ui.text.input.ImeAction.Next),
-                                colors=fieldColors)
-                            OutlinedTextField(value=addUnit, onValueChange={addUnit=it},
-                                placeholder={Box(Modifier.fillMaxWidth(), contentAlignment=Alignment.Center){
-                                    Text("U.", fontSize=11.sp, color=TextMuted)}},
-                                modifier=Modifier.width(54.dp).height(44.dp),
-                                shape=RoundedCornerShape(8.dp), singleLine=true,
-                                textStyle=LocalTextStyle.current.copy(fontSize=12.sp, color=TextBrown,
-                                    textAlign=TextAlign.Center),
-                                keyboardOptions=KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Done),
-                                keyboardActions=KeyboardActions(onDone={addItem();keyboard?.hide()}),
-                                colors=fieldColors)
-                            Surface(color=if(addName.isNotBlank()) PriOrangeDark else BorderBeige,
-                                shape=RoundedCornerShape(8.dp),
-                                modifier=Modifier.size(44.dp).clickable(enabled=addName.isNotBlank()){addItem()}) {
-                                Box(contentAlignment=Alignment.Center) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Article name — takes remaining space
+                            OutlinedTextField(
+                                value = addName, onValueChange = { addName = it },
+                                placeholder = { Text("Nom de l'article…", fontSize = 12.sp) },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(8.dp), singleLine = true,
+                                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = TextBrown),
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+                                colors = fieldColors
+                            )
+                            // Quantity — fixed 58dp
+                            OutlinedTextField(
+                                value = addQty, onValueChange = { addQty = it },
+                                placeholder = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Text("Qté", fontSize = 11.sp, color = TextMuted) } },
+                                modifier = Modifier.width(58.dp).height(48.dp),
+                                shape = RoundedCornerShape(8.dp), singleLine = true,
+                                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = TextBrown,
+                                    textAlign = TextAlign.Center),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
+                                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+                                colors = fieldColors
+                            )
+                            // Unit dropdown — fixed 72dp
+                            ExposedDropdownMenuBox(
+                                expanded = unitExpanded,
+                                onExpandedChange = { unitExpanded = it },
+                                modifier = Modifier.width(72.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = addUnit, onValueChange = {},
+                                    readOnly = true, singleLine = true,
+                                    modifier = Modifier.menuAnchor().height(48.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = TextBrown,
+                                        textAlign = TextAlign.Center),
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor         = PriOrange,
+                                        unfocusedBorderColor       = BorderBeige,
+                                        focusedTextColor           = TextBrown,
+                                        unfocusedTextColor         = TextBrown,
+                                        focusedContainerColor      = MaterialTheme.colorScheme.surfaceVariant,
+                                        unfocusedContainerColor    = MaterialTheme.colorScheme.surfaceVariant,
+                                        focusedTrailingIconColor   = TextMuted,
+                                        unfocusedTrailingIconColor = TextMuted
+                                    )
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = unitExpanded,
+                                    onDismissRequest = { unitExpanded = false }
+                                ) {
+                                    listOf("pcs","g","kg","ml","cl","l","c.s.","c.c.",
+                                           "botte","sachet","boîte").forEach { u ->
+                                        DropdownMenuItem(
+                                            text = { Text(u, fontSize = 13.sp) },
+                                            onClick = { addUnit = u; unitExpanded = false }
+                                        )
+                                    }
+                                }
+                            }
+                            // Add button — 48dp square
+                            Surface(
+                                color  = if (addName.isNotBlank()) PriOrangeDark else BorderBeige,
+                                shape  = RoundedCornerShape(8.dp),
+                                modifier = Modifier.size(48.dp).clickable(enabled = addName.isNotBlank()) { addItem() }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
                                     Icon(Icons.Default.Add, null,
-                                        tint=if(addName.isNotBlank()) Color.White else TextMuted,
-                                        modifier=Modifier.size(20.dp))
+                                        tint     = if (addName.isNotBlank()) Color.White else TextMuted,
+                                        modifier = Modifier.size(22.dp))
                                 }
                             }
                         }
