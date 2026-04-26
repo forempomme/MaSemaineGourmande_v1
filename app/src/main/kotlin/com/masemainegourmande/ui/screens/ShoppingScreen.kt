@@ -140,7 +140,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
     Box(Modifier.fillMaxSize().background(BgCream)) {
         LazyColumn(
             contentPadding = PaddingValues(start=12.dp, end=12.dp, top=10.dp, bottom=80.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
             modifier = Modifier.fillMaxSize()
         ) {
 
@@ -176,11 +176,11 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                 Card(shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = CatHeaderBg),
                     border = BorderStroke(1.dp, BorderBeige)) {
-                    Column(Modifier.padding(start=12.dp, end=12.dp, top=10.dp, bottom=11.dp),
+                    Column(Modifier.padding(start=10.dp, end=10.dp, top=9.dp, bottom=10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Ajouter manuellement", fontSize = 13.sp,
                             fontWeight = FontWeight.Bold, color = TextBrown)
-                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(value=addName, onValueChange={addName=it},
                                 placeholder={Text("Nom de l'article…", fontSize=11.sp)},
@@ -194,7 +194,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                             OutlinedTextField(value=addQty, onValueChange={addQty=it},
                                 placeholder={Box(Modifier.fillMaxWidth(), contentAlignment=Alignment.Center){
                                     Text("Qté", fontSize=11.sp, color=TextMuted)}},
-                                modifier=Modifier.width(52.dp).height(44.dp),
+                                modifier=Modifier.width(56.dp).height(44.dp),
                                 shape=RoundedCornerShape(8.dp), singleLine=true,
                                 textStyle=LocalTextStyle.current.copy(fontSize=12.sp, color=TextBrown,
                                     textAlign=TextAlign.Center),
@@ -205,7 +205,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                             OutlinedTextField(value=addUnit, onValueChange={addUnit=it},
                                 placeholder={Box(Modifier.fillMaxWidth(), contentAlignment=Alignment.Center){
                                     Text("U.", fontSize=11.sp, color=TextMuted)}},
-                                modifier=Modifier.width(50.dp).height(44.dp),
+                                modifier=Modifier.width(54.dp).height(44.dp),
                                 shape=RoundedCornerShape(8.dp), singleLine=true,
                                 textStyle=LocalTextStyle.current.copy(fontSize=12.sp, color=TextBrown,
                                     textAlign=TextAlign.Center),
@@ -246,16 +246,10 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                         val catItems      = localItems[group.categoryId] ?: group.items
                         val isCatDragging = catDragIdx == catIdx
 
-                        // Animation: card lifts and follows finger, bounces back on release
-                        val catVisualOffset by animateFloatAsState(
-                            targetValue   = if (isCatDragging) catDragOffsetPx else 0f,
-                            animationSpec = if (isCatDragging) snap()
-                                else spring(dampingRatio=Spring.DampingRatioMediumBouncy,
-                                            stiffness=Spring.StiffnessMediumLow),
-                            label = "catOff"
-                        )
+                        // catDragOffsetPx used directly for zero-lag finger tracking
+                        // catScale animated for lift effect only
                         val catScale by animateFloatAsState(
-                            targetValue   = if (isCatDragging) 1.04f else 1f,
+                            targetValue   = if (isCatDragging) 1.03f else 1f,
                             animationSpec = spring(dampingRatio=Spring.DampingRatioMediumBouncy),
                             label = "catScale"
                         )
@@ -268,7 +262,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                 .fillMaxWidth()
                                 .zIndex(if (isCatDragging) 10f else 0f)
                                 .graphicsLayer {
-                                    translationY    = catVisualOffset
+                                    translationY    = if (isCatDragging) catDragOffsetPx else 0f
                                     scaleX          = catScale
                                     scaleY          = catScale
                                     shadowElevation = if (isCatDragging) 24f else 1f
@@ -335,7 +329,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                             }
                                         )
                                     }
-                                    .padding(horizontal=12.dp, vertical=10.dp),
+                                    .padding(horizontal=12.dp, vertical=8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -343,8 +337,8 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                     color=if(isCatDragging) PriOrange else TextMuted.copy(alpha=0.4f))
                                 Text(catEmoji(group.categoryName), fontSize=15.sp)
                                 Text(group.categoryName.uppercase(),
-                                    fontWeight=FontWeight.ExtraBold, fontSize=11.sp,
-                                    color=TextBrown, letterSpacing=0.8.sp,
+                                    fontWeight=FontWeight.ExtraBold, fontSize=13.sp,
+                                    color=TextBrown, letterSpacing=0.5.sp,
                                     modifier=Modifier.weight(1f))
                                 Surface(color=AccGreenLight, shape=RoundedCornerShape(10.dp)) {
                                     Text(catItems.size.toString(), fontSize=11.sp,
@@ -360,13 +354,6 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                 val isItemDragging = itemDragIdx[group.categoryId] == itemIdx
                                 val rawOff = itemDragOffPx[group.categoryId] ?: 0f
 
-                                val itemOffset by animateFloatAsState(
-                                    targetValue   = if (isItemDragging) rawOff else 0f,
-                                    animationSpec = if (isItemDragging) snap()
-                                        else spring(dampingRatio=Spring.DampingRatioMediumBouncy,
-                                                    stiffness=Spring.StiffnessMedium),
-                                    label = "iOff_$itemIdx"
-                                )
                                 val itemScale by animateFloatAsState(
                                     targetValue   = if (isItemDragging) 1.02f else 1f,
                                     animationSpec = spring(dampingRatio=Spring.DampingRatioMediumBouncy),
@@ -378,7 +365,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                         .background(if(isItemDragging) Color(0xFF2A3558) else ItemRowBg)
                                         .zIndex(if(isItemDragging) 1f else 0f)
                                         .graphicsLayer {
-                                            translationY    = itemOffset
+                                            translationY    = if(isItemDragging) rawOff else 0f
                                             scaleX          = itemScale; scaleY = itemScale
                                             shadowElevation = if(isItemDragging) 10f else 0f
                                         }
@@ -432,7 +419,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                                 }
                                             )
                                         }
-                                        .padding(horizontal=12.dp, vertical=9.dp),
+                                        .padding(horizontal=12.dp, vertical=7.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
