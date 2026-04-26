@@ -221,10 +221,11 @@ private fun WeekCard(
     onAdd: () -> Unit, onDuplicate: () -> Unit, onShare: () -> Unit, onDetail: (RecipeEntity) -> Unit,
     onDelete: (String) -> Unit, onMinus: (String,Int) -> Unit, onPlus: (String,Int) -> Unit
 ) {
+    // Non-current weeks start collapsed; current week always expanded
+    var mealsExpanded by remember { mutableStateOf(isCurrent) }
     Card(
         shape  = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if(isCurrent) Color(0xFF1A2640) else Color(0xFF181C24)),
+        colors = CardDefaults.cardColors(containerColor = if(isCurrent) PriOrangeLight else Color.White),
         border = BorderStroke(if(isCurrent) 2.dp else 1.dp, if(isCurrent) PriOrange else BorderBeige)
     ) {
         Column(Modifier.padding(horizontal=13.dp, vertical=11.dp)) {
@@ -259,7 +260,26 @@ private fun WeekCard(
                     }
                 }
             }
-            if (meals.isNotEmpty()) {
+            // Toggle button for non-current weeks with meals
+            if (meals.isNotEmpty() && !isCurrent) {
+                Spacer(Modifier.height(6.dp))
+                Surface(
+                    color    = PriOrangeLight,
+                    shape    = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().clickable { mealsExpanded = !mealsExpanded }
+                ) {
+                    Row(Modifier.padding(horizontal=10.dp, vertical=6.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            if (mealsExpanded) "▲ ${meals.size} repas planifié${if(meals.size>1) "s" else ""}"
+                            else "▼ ${meals.size} repas planifié${if(meals.size>1) "s" else ""}",
+                            fontSize=12.sp, fontWeight=FontWeight.SemiBold, color=PriOrange,
+                            modifier=Modifier.weight(1f))
+                    }
+                }
+            }
+            // Meal rows
+            if (meals.isNotEmpty() && mealsExpanded) {
                 Spacer(Modifier.height(9.dp))
                 meals.forEach { mwr ->
                     MealRow(mwr=mwr,
@@ -278,7 +298,7 @@ private fun WeekCard(
 private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit, onMinus: ()->Unit, onPlus: ()->Unit) {
     Row(
         Modifier.fillMaxWidth()
-            .background(Color(0xFF1F2430), RoundedCornerShape(10.dp))
+            .background(Color.White, RoundedCornerShape(10.dp))
             .border(1.dp, BorderBeige, RoundedCornerShape(10.dp))
             .padding(horizontal=10.dp, vertical=8.dp),
         verticalAlignment=Alignment.CenterVertically,

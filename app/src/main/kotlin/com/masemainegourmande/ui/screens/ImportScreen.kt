@@ -115,6 +115,7 @@ private fun SuccessPanel(
     // Editable copy of the recipe
     var name        by remember { mutableStateOf(originalRecipe.name) }
     var emoji       by remember { mutableStateOf(originalRecipe.emoji) }
+    var showEmojiPicker by remember { mutableStateOf(false) }
     // Start at 6 portions regardless of what was parsed, so user sees scaled quantities immediately
     var portions    by remember { mutableStateOf(6) }
     val basePorts    = remember { originalRecipe.portions.coerceAtLeast(1) }
@@ -135,6 +136,13 @@ private fun SuccessPanel(
                 }
             )
         }
+    }
+    
+    // Time display
+    val timeStr = originalRecipe.cookTimeMinutes.let { t ->
+        if (t <= 0) null
+        else if (t >= 60) "${t/60}h${if(t%60>0) "${t%60}min" else ""}"
+        else "${t}min"
     }
 
     LazyColumn(
@@ -158,7 +166,11 @@ private fun SuccessPanel(
                     // Emoji + Name
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(emoji, fontSize = 38.sp)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(emoji, fontSize = 38.sp,
+                                modifier = Modifier.clickable { showEmojiPicker = !showEmojiPicker })
+                            Text("Changer", fontSize = 9.sp, color = Color.White.copy(alpha=0.7f))
+                        }
                         Column(Modifier.weight(1f)) {
                             Text("✅ Recette détectée", fontSize = 11.sp,
                                 color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.SemiBold)
@@ -179,6 +191,19 @@ private fun SuccessPanel(
                                     fontWeight = FontWeight.ExtraBold, fontSize = 17.sp
                                 )
                             )
+                        }
+                    }
+
+                    // CookTime chip (if available)
+                    if (timeStr != null) {
+                        Surface(color = Color.White.copy(alpha = 0.18f), shape = RoundedCornerShape(20.dp)) {
+                            Row(Modifier.padding(horizontal=12.dp, vertical=6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("⏱️", fontSize=14.sp)
+                                Text(timeStr, fontSize=13.sp, fontWeight=FontWeight.Bold, color=Color.White)
+                                Text("de préparation", fontSize=11.sp, color=Color.White.copy(alpha=0.8f))
+                            }
                         }
                     }
 
@@ -484,11 +509,12 @@ private fun roundQty(v: Double): Double = Math.round(v * 10).toDouble() / 10
 private fun ParsedRecipe.toTempEntity(): com.masemainegourmande.data.model.RecipeEntity {
     val j = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     return com.masemainegourmande.data.model.RecipeEntity(
-        id          = java.util.UUID.randomUUID().toString(),
-        name        = name, emoji = emoji, portions = portions, url = url,
-        ingredients = j.encodeToString(ListSerializer(
+        id               = java.util.UUID.randomUUID().toString(),
+        name             = name, emoji = emoji, portions = portions, url = url,
+        cookTimeMinutes  = cookTimeMinutes,
+        ingredients      = j.encodeToString(ListSerializer(
             com.masemainegourmande.data.model.Ingredient.serializer()), ingredients),
-        steps       = j.encodeToString(ListSerializer(String.serializer()), steps),
-        tags        = "[]"
+        steps            = j.encodeToString(ListSerializer(String.serializer()), steps),
+        tags             = "[]"
     )
 }

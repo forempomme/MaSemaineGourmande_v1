@@ -48,19 +48,15 @@ fun StatsScreen(vm: StatsViewModel) {
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // ── KPI grid ─────────────────────────────────
+            // ── KPI grid: 4 compact cards ─────────────────
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    KpiCard("🍽️", stats.totalMeals.toString(), "Repas planifiés", Modifier.weight(1f))
-                    KpiCard("👥", stats.totalPersonsMeals.toString(), "Personnes·repas", Modifier.weight(1f))
-                }
-            }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    KpiCard("🍽️", stats.totalMeals.toString(), "Repas", Modifier.weight(1f))
+                    KpiCard("👥", stats.totalPersonsMeals.toString(), "Pers.", Modifier.weight(1f))
                     KpiCard("📖",
                         "${stats.uniqueRecipes}/${stats.neverCooked.size + stats.uniqueRecipes}",
-                        "Recettes cuisinées", Modifier.weight(1f))
-                    KpiCard("📅", stats.activeWeeks.toString(), "Semaines actives", Modifier.weight(1f))
+                        "Recettes", Modifier.weight(1f))
+                    KpiCard("📅", stats.activeWeeks.toString(), "Semaines", Modifier.weight(1f))
                 }
             }
 
@@ -70,23 +66,51 @@ fun StatsScreen(vm: StatsViewModel) {
                     Card(shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = PriOrange),
                         modifier = Modifier.weight(1f)) {
-                        Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🔥", fontSize = 26.sp)
+                        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🔥", fontSize = 20.sp)
                             Text(stats.streak.toString(), fontWeight = FontWeight.ExtraBold,
-                                fontSize = 28.sp, color = Color.White)
-                            Text("Semaines consécutives", fontSize = 10.sp,
+                                fontSize = 22.sp, color = Color.White)
+                            Text("Sem. consécutives", fontSize = 9.sp,
                                 color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center)
                         }
                     }
                     Card(shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, BorderBeige),
                         modifier = Modifier.weight(1f)) {
-                        Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🏆", fontSize = 26.sp)
+                        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🏆", fontSize = 20.sp)
                             Text(stats.recordWeekMeals.toString(), fontWeight = FontWeight.ExtraBold,
-                                fontSize = 28.sp, color = PriOrange)
-                            Text("Repas (semaine record)", fontSize = 10.sp,
+                                fontSize = 22.sp, color = PriOrange)
+                            Text("Repas record", fontSize = 9.sp,
                                 color = TextMuted, textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+            }
+
+            // ── Recette favorite ─────────────────────────
+            if (stats.top5Recipes.isNotEmpty()) {
+                item {
+                    val (favRecipe, favCount) = stats.top5Recipes.first()
+                    Card(shape=RoundedCornerShape(12.dp),
+                        colors=CardDefaults.cardColors(containerColor=CardSurface),
+                        border=BorderStroke(1.dp,BorderBeige),
+                        modifier=Modifier.fillMaxWidth()) {
+                        Row(Modifier.padding(12.dp),
+                            verticalAlignment=Alignment.CenterVertically,
+                            horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                            Text("⭐", fontSize=22.sp)
+                            Column(Modifier.weight(1f)) {
+                                Text("Recette favorite", fontSize=11.sp, color=TextMuted,
+                                    fontWeight=FontWeight.Bold)
+                                Text("${favRecipe.emoji} ${favRecipe.name}", fontSize=14.sp,
+                                    fontWeight=FontWeight.Bold, color=TextBrown)
+                            }
+                            Surface(color=PriOrangeLight, shape=RoundedCornerShape(8.dp)) {
+                                Text("${favCount}×", fontSize=13.sp,
+                                    fontWeight=FontWeight.ExtraBold, color=PriOrange,
+                                    modifier=Modifier.padding(horizontal=8.dp, vertical=4.dp))
+                            }
                         }
                     }
                 }
@@ -197,14 +221,14 @@ fun StatsScreen(vm: StatsViewModel) {
 
 @Composable
 private fun KpiCard(icon: String, value: String, label: String, modifier: Modifier = Modifier) {
-    Card(shape = RoundedCornerShape(12.dp),
+    Card(shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, BorderBeige),
         modifier = modifier) {
-        Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(icon, fontSize = 26.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = PriOrange)
-            Text(label, fontSize = 11.sp, color = TextMuted, textAlign = TextAlign.Center)
+        Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(icon, fontSize = 18.sp)
+            Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = PriOrange,
+                textAlign = TextAlign.Center)
+            Text(label, fontSize = 9.sp, color = TextMuted, textAlign = TextAlign.Center)
         }
     }
 }

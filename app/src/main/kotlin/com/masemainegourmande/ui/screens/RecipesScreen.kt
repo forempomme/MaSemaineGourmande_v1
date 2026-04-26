@@ -1,5 +1,7 @@
 package com.masemainegourmande.ui.screens
 
+import android.content.Intent
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateSet
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,9 +49,24 @@ val RECIPE_TAGS = listOf(
 )
 
 val FOOD_EMOJIS = listOf(
-    "🍗","🥩","🐟","🍔","🥚","🧀","🥛","🍕","🍝","🍜","🍲","🥘","🥗",
-    "🍱","🍣","🌮","🌯","🥙","🍞","🥖","🧁","🎂","🍰","🥧","🍨","🥞","🫕","🥦","🥕","🍅",
-    "🥑","🌽","🍋","🍎","🍓","🧅","🧄","🫚","🍳","🍽️","🫙","🥫","🧆","🥜","🌿","🫛"
+    // Viandes & poissons
+    "🍗","🥩","🐟","🍔","🥓","🌭","🍖","🦐","🦞","🦀","🦑","🐙","🍣","🍱","🍤",
+    // Légumes
+    "🥦","🥕","🍅","🥑","🧅","🧄","🌽","🫛","🥬","🫑","🌶️","🥒","🍆","🥔","🫚",
+    "🥝","🌿","🌾","🫘","🫒","🥜","🫚",
+    // Fruits
+    "🍋","🍊","🍎","🍓","🫐","🍇","🍑","🥭","🍍","🍌","🍒","🍈","🍏","🫒",
+    // Plats cuisinés
+    "🍕","🍝","🍜","🍲","🥘","🫕","🍛","🍚","🍙","🍥","🥗","🥪","🌮","🌯","🥙",
+    "🫔","🧆","🥚","🍳","🥞","🧇","🧈",
+    // Produits laitiers & divers
+    "🧀","🥛","🍦","🍧","🍨","🥐","🥖","🍞","🥨","🫙","🥫",
+    // Desserts & snacks
+    "🧁","🎂","🍰","🥧","🍮","🍯","🍫","🍬","🍭","🍪","🥜","🌰","🍿",
+    // Boissons
+    "☕","🍵","🧃","🥤","🫖",
+    // Divers cuisine
+    "🍽️","🫕","🧂","🫙","🥄","🍴"
 )
 
 private val jsonSerializer = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -312,15 +330,22 @@ private fun RecipeCard(
                 Text(recipe.emoji, fontSize = 26.sp, modifier = Modifier.padding(bottom = 2.dp))
                 Column(Modifier.weight(1f).padding(end = 4.dp)) {
                     Text(recipe.name, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
-                        maxLines = 2, lineHeight = 15.sp, overflow = TextOverflow.Ellipsis,
-                        color = Color.White)
+                        maxLines = 2, lineHeight = 15.sp, overflow = TextOverflow.Ellipsis)
                     if (recipe.rating > 0) {
                         Row {
                             repeat(recipe.rating)      { Text("★", fontSize = 9.sp, color = StarYellow) }
                             repeat(5 - recipe.rating) { Text("★", fontSize = 9.sp, color = BorderBeige) }
                         }
                     }
-                    Text("👤 ${recipe.portions}p", fontSize = 9.sp, color = TextMuted)
+                    Row(horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                        Text("👤 ${recipe.portions}p", fontSize = 9.sp, color = TextMuted)
+                        if (recipe.cookTimeMinutes > 0) {
+                            val t = if (recipe.cookTimeMinutes >= 60)
+                                "${recipe.cookTimeMinutes/60}h${if(recipe.cookTimeMinutes%60>0)"${recipe.cookTimeMinutes%60}m" else ""}"
+                            else "${recipe.cookTimeMinutes}m"
+                            Text("⏱ $t", fontSize = 9.sp, color = TextMuted)
+                        }
+                    }
                     val tags = recipe.parseTags()
                     if (tags.isNotEmpty()) {
                         Row(horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -433,27 +458,21 @@ internal fun RecipeDetailSheet(
                 StatChip("🍽️", cookCount.toString(), "fois cuisinée", highlight = true, modifier = Modifier.weight(1f))
             }
 
-            // Portions stepper — compact inline
-            Surface(color = Color(0x226AAAF8), shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(1.dp, Color(0x446AAAF8))) {
-                Row(Modifier.fillMaxWidth().padding(horizontal=12.dp, vertical=8.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Text("👤", fontSize = 16.sp)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Portions", fontWeight = FontWeight.Bold, color = PriOrange,
-                        modifier = Modifier.weight(1f))
-                    Surface(color = PriOrangeDark, shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.size(28.dp).clickable(onClick = { if (persons > 1) persons-- })) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("−", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            // Portions stepper
+            Card(colors = CardDefaults.cardColors(containerColor = PriOrangeLight), shape = RoundedCornerShape(10.dp)) {
+                Row(Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("👤 Portions", fontWeight = FontWeight.Bold, color = PriOrange)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(onClick = { if (persons > 1) persons-- },
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = PriOrange)) {
+                            Icon(Icons.Default.Remove, null, tint = Color.White)
                         }
-                    }
-                    Text(persons.toString(), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp,
-                        modifier = Modifier.padding(horizontal = 12.dp), textAlign = TextAlign.Center)
-                    Surface(color = PriOrangeDark, shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.size(28.dp).clickable(onClick = { persons++ })) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("+", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(persons.toString(), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                        IconButton(onClick = { persons++ },
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = PriOrange)) {
+                            Icon(Icons.Default.Add, null, tint = Color.White)
                         }
                     }
                 }
@@ -462,7 +481,7 @@ internal fun RecipeDetailSheet(
             // Ingredients
             Text("🧂 Ingrédients", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             recipe.parseIngredients().forEach { ing ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(ing.name, fontSize = 14.sp)
                     val qty = if (ing.qty > 0) "${fmtQty(ing.qty * ratio)} ${ing.unit}".trim() else ing.unit.ifEmpty { "—" }
                     Text(qty, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = PriOrange)
@@ -470,18 +489,37 @@ internal fun RecipeDetailSheet(
                 HorizontalDivider(color = BorderBeige)
             }
 
-            // Steps
+            // Steps with checkboxes (reset when sheet dismissed)
             val steps = recipe.parseSteps()
             if (steps.isNotEmpty()) {
+                val checkedSteps = remember(recipe.id) { mutableStateSetOf<Int>() }
                 Text("📋 Préparation", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 steps.forEachIndexed { i, step ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Surface(color = PriOrange, shape = CircleShape, modifier = Modifier.size(24.dp)) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text((i + 1).toString(), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                            }
+                    val done = i in checkedSteps
+                    Surface(
+                        color  = if (done) Color(0xFF1A3028) else Color.Transparent,
+                        shape  = RoundedCornerShape(10.dp),
+                        border = if (done) BorderStroke(1.dp, AccGreen) else null,
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            if (done) checkedSteps.remove(i) else checkedSteps.add(i)
                         }
-                        Text(step, fontSize = 14.sp, lineHeight = 22.sp, modifier = Modifier.weight(1f))
+                    ) {
+                        Row(Modifier.padding(horizontal=8.dp, vertical=7.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.Top) {
+                            Surface(color = if (done) AccGreen else PriOrange,
+                                shape = CircleShape, modifier = Modifier.size(24.dp)) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(if(done) "✓" else "${i+1}", fontSize=11.sp,
+                                        fontWeight=FontWeight.ExtraBold, color=Color.White)
+                                }
+                            }
+                            Text(step, fontSize=14.sp, lineHeight=22.sp, modifier=Modifier.weight(1f),
+                                color = if (done) AccGreen else TextBrown,
+                                textDecoration = if (done)
+                                    androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                else androidx.compose.ui.text.style.TextDecoration.None)
+                        }
                     }
                 }
             }
@@ -519,18 +557,15 @@ internal fun RecipeDetailSheet(
 
 @Composable
 private fun StatChip(icon: String, value: String, label: String, highlight: Boolean = false, modifier: Modifier = Modifier) {
-    Card(shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    Card(shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCream),
         border = BorderStroke(1.dp, BorderBeige), modifier = modifier) {
-        Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(icon, fontSize = 16.sp)
-            Column {
-                Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
-                    color = if (highlight) PriOrange else TextBrown)
-                Text(label, fontSize = 9.sp, color = TextMuted)
-            }
+        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(icon, fontSize = 20.sp)
+            Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp,
+                color = if (highlight) PriOrange else MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center)
+            Text(label, fontSize = 10.sp, color = TextMuted)
         }
     }
 }
@@ -560,6 +595,7 @@ private fun RecipeEditSheet(
     var ingredients by remember { mutableStateOf(ArrayList(recipe?.parseIngredients()
         ?: listOf(Ingredient("", 0.0, "")))) }
     var steps     by remember { mutableStateOf(ArrayList(recipe?.parseSteps() ?: listOf(""))) }
+    var cookTime by remember { mutableStateOf(if((recipe?.cookTimeMinutes?:0)>0) (recipe?.cookTimeMinutes?:0).toString() else "") }
     var showEmojiPicker by remember { mutableStateOf(false) }
 
     Dialog(
@@ -585,6 +621,32 @@ private fun RecipeEditSheet(
                 Text(if (isNew) "Nouvelle recette" else "Modifier la recette",
                     fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color.White,
                     modifier = Modifier.weight(1f))
+                // Save button in header
+                if (name.isNotBlank()) {
+                    TextButton(onClick = {
+                        val entity = (recipe ?: RecipeEntity(
+                            id = java.util.UUID.randomUUID().toString(),
+                            name = "", emoji = "🍽️", portions = 1, url = ""
+                        )).copy(
+                            name             = name.trim(),
+                            emoji            = emoji,
+                            portions         = portions,
+                            url              = url.trim(),
+                            note             = note.trim(),
+                            favorite         = favorite,
+                            rating           = rating,
+                            cookTimeMinutes  = cookTime.toIntOrNull() ?: 0,
+                            tags             = stringsToJson(tags),
+                            ingredients      = ingredientsToJson(
+                                ingredients.filter { it.name.isNotBlank() }),
+                            steps            = stringsToJson(
+                                steps.filter { it.isNotBlank() })
+                        )
+                        onSave(entity)
+                    }) {
+                        Text("Enregistrer", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
                 IconButton(onClick = onClose) {
                     Icon(Icons.Default.Close, null, tint = Color.White)
                 }
@@ -643,7 +705,7 @@ private fun RecipeEditSheet(
                 }
             }
 
-            // Portions + URL
+            // Portions + URL + CookTime
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text("Portions", style = MaterialTheme.typography.labelSmall, color = TextMuted)
@@ -662,6 +724,11 @@ private fun RecipeEditSheet(
                 OutlinedTextField(value = url, onValueChange = { url = it },
                     label = { Text("URL (optionnel)") }, modifier = Modifier.weight(2f),
                     shape = RoundedCornerShape(10.dp), singleLine = true)
+                OutlinedTextField(value = cookTime, onValueChange = { cookTime = it },
+                    label = { Text("⏱️ Durée (min)") }, modifier = Modifier.width(90.dp),
+                    shape = RoundedCornerShape(10.dp), singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
             }
 
             // Tags — use explicit add/remove to avoid operator overload ambiguity
@@ -776,3 +843,31 @@ private fun RecipeEditSheet(
 
 private fun fmtQty(v: Double): String =
     if (v == v.toLong().toDouble()) v.toLong().toString() else "%.1f".format(v)
+
+private fun buildShareRecipeText(recipe: RecipeEntity): String = buildString {
+    appendLine("${recipe.emoji} ${recipe.name}")
+    if (recipe.cookTimeMinutes > 0) {
+        val t = if (recipe.cookTimeMinutes >= 60)
+            "${recipe.cookTimeMinutes/60}h${if(recipe.cookTimeMinutes%60>0) "${recipe.cookTimeMinutes%60}min" else ""}"
+        else "${recipe.cookTimeMinutes}min"
+        appendLine("⏱️ Durée : $t")
+    }
+    appendLine("👤 ${recipe.portions} portions")
+    appendLine()
+    appendLine("🧂 Ingrédients")
+    recipe.parseIngredients().forEach { ing ->
+        val qty = if (ing.qty > 0) "${ing.qty} ${ing.unit} ".trimEnd() + " " else ""
+        appendLine("• $qty${ing.name}")
+    }
+    if (recipe.steps.isNotEmpty()) {
+        appendLine()
+        appendLine("📋 Préparation")
+        recipe.parseSteps().forEachIndexed { i, step ->
+            appendLine("${i+1}. $step")
+        }
+    }
+    if (recipe.url.isNotBlank()) {
+        appendLine()
+        appendLine("🔗 ${recipe.url}")
+    }
+}.trim()

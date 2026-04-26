@@ -16,6 +16,16 @@ class MsgApplication : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+
+    /** Migration v2 → v3: add cookTimeMinutes to recipes */
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                "ALTER TABLE recipes ADD COLUMN cookTimeMinutes INTEGER NOT NULL DEFAULT 0"
+            )
+        }
+    }
+
     /** Migration from v1 (no meals/pantry) to v2 */
     private val MIGRATION_1_2 = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
@@ -41,7 +51,7 @@ class MsgApplication : Application() {
 
     val database: AppDatabase by lazy {
         Room.databaseBuilder(this, AppDatabase::class.java, AppDatabase.NAME)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .fallbackToDestructiveMigration()
             .build()
     }

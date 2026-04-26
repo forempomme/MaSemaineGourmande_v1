@@ -25,7 +25,8 @@ data class ParsedRecipe(
     val ingredients: List<Ingredient>,
     val steps: List<String>,
     val tags: List<String> = emptyList(),
-    val note: String = ""
+    val note: String = "",
+    val cookTimeMinutes: Int = 0
 )
 
 // ═══════════════════════════════════════════════════════════════
@@ -47,6 +48,7 @@ data class RecipeEntity(
     val favorite: Boolean = false,
     val rating: Int = 0,       // 0-5
     val note: String = "",
+    val cookTimeMinutes: Int = 0,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     fun parseIngredients(): List<Ingredient> =
