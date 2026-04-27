@@ -3,6 +3,7 @@ package com.masemainegourmande.ui.screens
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -151,8 +152,9 @@ fun PlanningScreen(vm: PlanningViewModel, shoppingVm: ShoppingViewModel, default
                             },
                             onDetail    = { recipe -> detailRecipe = recipe },
                             onDelete    = { id -> vm.deleteMeal(id) },
-                            onMinus     = { id, cur -> vm.updatePersons(id, maxOf(1, cur-1)) },
-                            onPlus      = { id, cur -> vm.updatePersons(id, cur+1) }
+                            onMinus       = { id, cur -> vm.updatePersons(id, maxOf(1, cur-1)) },
+                            onPlus        = { id, cur -> vm.updatePersons(id, cur+1) },
+                            onToggleDone  = { id, done -> vm.toggleMealDone(id, done) }
                         )
                     }
                 }
@@ -219,9 +221,9 @@ private fun WeekCard(
     week: Int, monday: String, sunday: String, isCurrent: Boolean,
     meals: List<MealWithRecipe>,
     onAdd: () -> Unit, onDuplicate: () -> Unit, onShare: () -> Unit, onDetail: (RecipeEntity) -> Unit,
-    onDelete: (String) -> Unit, onMinus: (String,Int) -> Unit, onPlus: (String,Int) -> Unit
+    onDelete: (String) -> Unit, onMinus: (String,Int) -> Unit, onPlus: (String,Int) -> Unit,
+    onToggleDone: (String, Boolean) -> Unit = { _, _ -> }
 ) {
-    // Non-current weeks start collapsed; current week always expanded
     var mealsExpanded by remember { mutableStateOf(isCurrent) }
     Card(
         shape  = RoundedCornerShape(14.dp),
@@ -286,7 +288,8 @@ private fun WeekCard(
                         onDetail={ onDetail(mwr.recipe) },
                         onDelete={ onDelete(mwr.meal.id) },
                         onMinus={ onMinus(mwr.meal.id, mwr.meal.persons) },
-                        onPlus={ onPlus(mwr.meal.id, mwr.meal.persons) })
+                        onPlus={ onPlus(mwr.meal.id, mwr.meal.persons) },
+                        onToggleDone={ onToggleDone(mwr.meal.id, mwr.meal.done) })
                     Spacer(Modifier.height(6.dp))
                 }
             }
@@ -295,18 +298,25 @@ private fun WeekCard(
 }
 
 @Composable
-private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit, onMinus: ()->Unit, onPlus: ()->Unit) {
+private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit,
+                    onMinus: ()->Unit, onPlus: ()->Unit, onToggleDone: ()->Unit = {}) {
+    val done = mwr.meal.done
     Row(
         Modifier.fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(10.dp))
-            .border(1.dp, BorderBeige, RoundedCornerShape(10.dp))
+            .background(
+                if (done) Color(0xFF1A3028) else Color(0xFF1F2430),
+                RoundedCornerShape(10.dp))
+            .border(1.dp,
+                if (done) AccGreen else BorderBeige,
+                RoundedCornerShape(10.dp))
             .padding(horizontal=10.dp, vertical=8.dp),
         verticalAlignment=Alignment.CenterVertically,
         horizontalArrangement=Arrangement.spacedBy(7.dp)
     ) {
         Text(mwr.recipe.emoji, fontSize=18.sp,
             modifier=Modifier.noRipple { onDetail() })
-        Text(mwr.recipe.name, fontSize=13.sp, fontWeight=FontWeight.SemiBold, color=TextBrown,
+        Text(mwr.recipe.name, fontSize=13.sp, fontWeight=FontWeight.SemiBold,
+            color=if(done) AccGreen else TextBrown,
             modifier=Modifier.weight(1f).noRipple { onDetail() }, maxLines=1, overflow=TextOverflow.Ellipsis)
         Row(verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(4.dp)) {
             Surface(color=PriOrangeLight, shape=RoundedCornerShape(6.dp),
@@ -324,6 +334,18 @@ private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit,
                 }
             }
             Text("👤", fontSize=10.sp, color=TextMuted)
+        }
+        // ✓ done button
+        Surface(
+            color    = if (done) AccGreen else AccGreenLight,
+            shape    = RoundedCornerShape(6.dp),
+            border   = if (!done) BorderStroke(1.dp, AccGreen) else null,
+            modifier = Modifier.size(28.dp).noRipple { onToggleDone() }
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("✓", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
+                    color = if (done) Color.White else AccGreen)
+            }
         }
         Box(Modifier.size(24.dp).noRipple { onDelete() }, contentAlignment=Alignment.Center) {
             Text("✕", fontSize=15.sp, color=TextMuted)
