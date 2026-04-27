@@ -39,7 +39,7 @@ import kotlinx.serialization.json.Json
 private val IMPORT_EMOJIS = listOf(
     "🍗","🥩","🐟","🍔","🥓","🌭","🍖","🦐","🦞","🦀","🦑","🐙","🍣","🍱","🍤",
     "🥦","🥕","🍅","🥑","🧅","🧄","🌽","🫛","🥬","🫑","🌶️","🥒","🍆","🥔","🫚",
-    "🍋","🍊","🍎","🍓","🫐","🍇","🍑","🥭","🍍","🍌","🍒",
+    "🍋","🍊","🍎","🍓","🫐","🍇","🍑","🥭","🍍","🍌","🍒","🍈",
     "🍕","🍝","🍜","🍲","🥘","🫕","🍛","🍚","🥗","🥪","🌮","🌯","🥙","🍳","🥞",
     "🧀","🥛","🧁","🎂","🍰","🥧","🥐","🥖","🍞","🫙","🥫","🧂","☕","🍵","🍽️"
 )
@@ -147,9 +147,8 @@ private fun SuccessPanel(
         }
     }
 
-    val timeStr = originalRecipe.cookTimeMinutes.let { t ->
-        if (t <= 0) null
-        else if (t >= 60) "${t/60}h${if(t%60>0) "${t%60}min" else ""}"
+    val timeStr: String? = originalRecipe.cookTimeMinutes.takeIf { it > 0 }?.let { t ->
+        if (t >= 60) "${t/60}h${if(t%60>0) "${t%60}min" else ""}"
         else "${t}min"
     }
 
@@ -174,12 +173,10 @@ private fun SuccessPanel(
                     // Emoji + Name
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { showEmojiPicker = !showEmojiPicker }
-                        ) {
-                            Text(emoji, fontSize = 38.sp)
-                            Text("Changer", fontSize = 9.sp, color = Color.White.copy(alpha=0.7f))
+                        Box(modifier=Modifier.clickable{ showEmojiPicker=!showEmojiPicker }) {
+                            Text(emoji, fontSize=38.sp)
+                            Text("✏️", fontSize=12.sp,
+                                modifier=Modifier.align(Alignment.BottomEnd))
                         }
                         Column(Modifier.weight(1f)) {
                             Text("✅ Recette détectée", fontSize = 11.sp,
@@ -205,13 +202,13 @@ private fun SuccessPanel(
                     }
 
                     if (timeStr != null) {
-                        Surface(color=Color.White.copy(alpha=0.18f), shape=RoundedCornerShape(20.dp)) {
-                            Row(Modifier.padding(horizontal=12.dp,vertical=6.dp),
+                        Surface(color=Color.White.copy(alpha=0.2f), shape=RoundedCornerShape(20.dp)) {
+                            Row(Modifier.padding(horizontal=10.dp, vertical=5.dp),
                                 verticalAlignment=Alignment.CenterVertically,
-                                horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                Text("⏱️", fontSize=14.sp)
-                                Text(timeStr, fontSize=13.sp, fontWeight=FontWeight.Bold, color=Color.White)
-                                Text("de préparation", fontSize=11.sp, color=Color.White.copy(alpha=0.8f))
+                                horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                                Text("⏱️", fontSize=13.sp)
+                                Text(timeStr, fontSize=12.sp, fontWeight=FontWeight.Bold, color=Color.White)
+                                Text("de préparation", fontSize=10.sp, color=Color.White.copy(alpha=0.85f))
                             }
                         }
                     }
