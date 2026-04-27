@@ -24,6 +24,14 @@ class MsgApplication : Application() {
         }
     }
 
+
+    /** Migration v3 → v4 : cookTimeMinutes sur les recettes */
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE recipes ADD COLUMN cookTimeMinutes INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     /** Migration from v1 (no meals/pantry) to v2 */
     private val MIGRATION_1_2 = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
@@ -49,7 +57,7 @@ class MsgApplication : Application() {
 
     val database: AppDatabase by lazy {
         Room.databaseBuilder(this, AppDatabase::class.java, AppDatabase.NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .fallbackToDestructiveMigration()
             .build()
     }
