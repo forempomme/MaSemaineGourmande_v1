@@ -323,7 +323,7 @@ private fun RecipeCard(
                     Row(horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                         Text("👤 ${recipe.portions}p", fontSize=9.sp, color=TextMuted)
                         if (recipe.cookTimeMinutes > 0) {
-                            val t = if (recipe.cookTimeMinutes>=60) "${recipe.cookTimeMinutes/60}h${if(recipe.cookTimeMinutes%60>0)"${recipe.cookTimeMinutes%60}m" else ""}"
+                            val t = if(recipe.cookTimeMinutes>=60) "${recipe.cookTimeMinutes/60}h${if(recipe.cookTimeMinutes%60>0)"${recipe.cookTimeMinutes%60}m" else ""}"
                             else "${recipe.cookTimeMinutes}m"
                             Text("⏱ $t", fontSize=9.sp, color=TextMuted)
                         }
@@ -477,24 +477,23 @@ internal fun RecipeDetailSheet(
                 val checkedSteps = remember(recipe.id) { androidx.compose.runtime.mutableStateListOf<Int>() }
                 Text("📋 Préparation", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 steps.forEachIndexed { i, step ->
-                    val done = checkedSteps.contains(i)
+                    val doneStep = checkedSteps.contains(i)
                     Box(modifier = Modifier.fillMaxWidth().padding(bottom=4.dp)
-                        .background(if(done) Color(0xFF1A3028) else Color.Transparent, RoundedCornerShape(10.dp))
-                        .then(if(done) Modifier.border(1.dp, AccGreen, RoundedCornerShape(10.dp)) else Modifier)
-                        .clickable { if(done) checkedSteps.remove(i) else checkedSteps.add(i) }
+                        .background(if(doneStep) Color(0xFF1A3028) else Color.Transparent, RoundedCornerShape(10.dp))
+                        .then(if(doneStep) Modifier.border(1.dp, AccGreen, RoundedCornerShape(10.dp)) else Modifier)
+                        .clickable { if(doneStep) checkedSteps.remove(i) else checkedSteps.add(i) }
                     ) {
                         Row(Modifier.padding(8.dp), horizontalArrangement=Arrangement.spacedBy(10.dp),
                             verticalAlignment=Alignment.Top) {
-                            Surface(color=if(done) AccGreen else PriOrange, shape=CircleShape,
-                                modifier=Modifier.size(24.dp)) {
+                            Surface(color=if(doneStep) AccGreen else PriOrange, shape=CircleShape, modifier=Modifier.size(24.dp)) {
                                 Box(contentAlignment=Alignment.Center) {
-                                    Text(if(done) "✓" else "${i+1}", fontSize=11.sp,
+                                    Text(if(doneStep) "✓" else "${i+1}", fontSize=11.sp,
                                         fontWeight=FontWeight.ExtraBold, color=Color.White)
                                 }
                             }
                             Text(step, fontSize=14.sp, lineHeight=22.sp, modifier=Modifier.weight(1f),
-                                color=if(done) AccGreen else TextBrown,
-                                textDecoration=if(done) androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                color=if(doneStep) AccGreen else TextBrown,
+                                textDecoration=if(doneStep) androidx.compose.ui.text.style.TextDecoration.LineThrough
                                                else androidx.compose.ui.text.style.TextDecoration.None)
                         }
                     }
@@ -523,17 +522,16 @@ internal fun RecipeDetailSheet(
                 Text("Ajouter à la liste de courses", fontWeight = FontWeight.Bold)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Modifier")
+                OutlinedButton(onClick=onEdit, modifier=Modifier.weight(1f).height(48.dp),
+                    shape=RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Default.Edit, null, modifier=Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp)); Text("Modifier")
                 }
                 val shareCtx = androidx.compose.ui.platform.LocalContext.current
-                OutlinedButton(onClick = {
+                OutlinedButton(onClick={
                     val txt = buildString {
                         appendLine("${recipe.emoji} ${recipe.name}")
-                        if (recipe.cookTimeMinutes > 0) {
+                        if (recipe.cookTimeMinutes>0) {
                             val t = if(recipe.cookTimeMinutes>=60) "${recipe.cookTimeMinutes/60}h${if(recipe.cookTimeMinutes%60>0)"${recipe.cookTimeMinutes%60}min" else ""}" else "${recipe.cookTimeMinutes}min"
                             appendLine("⏱️ Durée : $t")
                         }
@@ -550,11 +548,11 @@ internal fun RecipeDetailSheet(
                     }.trim()
                     shareCtx.startActivity(android.content.Intent.createChooser(
                         android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                            type="text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, txt)
-                        }, "Partager la recette"))
+                            type="text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, txt) },
+                        "Partager la recette"))
                 }, modifier=Modifier.height(48.dp), shape=RoundedCornerShape(12.dp),
-                    contentPadding=PaddingValues(horizontal=14.dp)) {
-                    Icon(Icons.Default.Share, null, modifier=Modifier.size(18.dp))
+                    contentPadding=PaddingValues(horizontal=12.dp)) {
+                    Icon(Icons.Default.Share, null, modifier=Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp)); Text("Partager")
                 }
             }
@@ -721,7 +719,7 @@ private fun RecipeEditSheet(
                     label = { Text("URL (optionnel)") }, modifier = Modifier.weight(2f),
                     shape = RoundedCornerShape(10.dp), singleLine = true)
                 OutlinedTextField(value = cookTime, onValueChange = { cookTime = it },
-                    label = { Text("⏱️ Durée (min)") }, modifier = Modifier.width(88.dp),
+                    label = { Text("⏱️ min") }, modifier = Modifier.width(72.dp),
                     shape = RoundedCornerShape(10.dp), singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
