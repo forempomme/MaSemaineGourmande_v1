@@ -262,35 +262,31 @@ private fun WeekCard(
                     }
                 }
             }
-            // Toggle button for non-current weeks with meals
-            if (meals.isNotEmpty() && !isCurrent) {
-                Spacer(Modifier.height(6.dp))
-                Surface(
-                    color    = PriOrangeLight,
-                    shape    = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth().clickable { mealsExpanded = !mealsExpanded }
-                ) {
-                    Row(Modifier.padding(horizontal=10.dp, vertical=6.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (mealsExpanded) "▲ ${meals.size} repas planifié${if(meals.size>1) "s" else ""}"
-                            else "▼ ${meals.size} repas planifié${if(meals.size>1) "s" else ""}",
-                            fontSize=12.sp, fontWeight=FontWeight.SemiBold, color=PriOrange,
-                            modifier=Modifier.weight(1f))
+            if (meals.isNotEmpty()) {
+                if (!isCurrent) {
+                    Spacer(Modifier.height(6.dp))
+                    Surface(color=PriOrangeLight, shape=RoundedCornerShape(8.dp),
+                        modifier=Modifier.fillMaxWidth().clickable{ mealsExpanded=!mealsExpanded }) {
+                        Row(Modifier.padding(horizontal=10.dp, vertical=6.dp),
+                            verticalAlignment=Alignment.CenterVertically) {
+                            Text(if(mealsExpanded) "▲" else "▼", fontSize=12.sp, color=PriOrange)
+                            Spacer(Modifier.width(6.dp))
+                            Text("${meals.size} repas planifié${if(meals.size>1)"s" else ""}",
+                                fontSize=12.sp, fontWeight=FontWeight.SemiBold, color=PriOrange)
+                        }
                     }
                 }
-            }
-            // Meal rows
-            if (meals.isNotEmpty() && mealsExpanded) {
-                Spacer(Modifier.height(9.dp))
-                meals.forEach { mwr ->
-                    MealRow(mwr=mwr,
-                        onDetail={ onDetail(mwr.recipe) },
-                        onDelete={ onDelete(mwr.meal.id) },
-                        onMinus={ onMinus(mwr.meal.id, mwr.meal.persons) },
-                        onPlus={ onPlus(mwr.meal.id, mwr.meal.persons) },
-                        onToggleDone={ onToggleDone(mwr.meal.id, mwr.meal.done) })
-                    Spacer(Modifier.height(6.dp))
+                if (mealsExpanded) {
+                    Spacer(Modifier.height(9.dp))
+                    meals.forEach { mwr ->
+                        MealRow(mwr=mwr,
+                            onDetail={ onDetail(mwr.recipe) },
+                            onDelete={ onDelete(mwr.meal.id) },
+                            onMinus={ onMinus(mwr.meal.id, mwr.meal.persons) },
+                            onPlus={ onPlus(mwr.meal.id, mwr.meal.persons) },
+                            onToggleDone={ onToggleDone(mwr.meal.id, mwr.meal.done) })
+                        Spacer(Modifier.height(6.dp))
+                    }
                 }
             }
         }
@@ -303,12 +299,8 @@ private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit,
     val done = mwr.meal.done
     Row(
         Modifier.fillMaxWidth()
-            .background(
-                if (done) Color(0xFF1A3028) else Color(0xFF1F2430),
-                RoundedCornerShape(10.dp))
-            .border(1.dp,
-                if (done) AccGreen else BorderBeige,
-                RoundedCornerShape(10.dp))
+            .background(if(done) Color(0xFF1A3028) else Color(0xFF1F2430), RoundedCornerShape(10.dp))
+            .border(1.dp, if(done) AccGreen else BorderBeige, RoundedCornerShape(10.dp))
             .padding(horizontal=10.dp, vertical=8.dp),
         verticalAlignment=Alignment.CenterVertically,
         horizontalArrangement=Arrangement.spacedBy(7.dp)
@@ -334,18 +326,6 @@ private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit,
                 }
             }
             Text("👤", fontSize=10.sp, color=TextMuted)
-        }
-        // ✓ done button
-        Surface(
-            color    = if (done) AccGreen else AccGreenLight,
-            shape    = RoundedCornerShape(6.dp),
-            border   = if (!done) BorderStroke(1.dp, AccGreen) else null,
-            modifier = Modifier.size(28.dp).noRipple { onToggleDone() }
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text("✓", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
-                    color = if (done) Color.White else AccGreen)
-            }
         }
         Box(Modifier.size(24.dp).noRipple { onDelete() }, contentAlignment=Alignment.Center) {
             Text("✕", fontSize=15.sp, color=TextMuted)
