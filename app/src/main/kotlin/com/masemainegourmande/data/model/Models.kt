@@ -25,7 +25,8 @@ data class ParsedRecipe(
     val ingredients: List<Ingredient>,
     val steps: List<String>,
     val tags: List<String> = emptyList(),
-    val note: String = ""
+    val note: String = "",
+    val cookTimeMinutes: Int = 0
 )
 
 // ═══════════════════════════════════════════════════════════════
