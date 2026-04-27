@@ -266,7 +266,8 @@ private fun WeekCard(
                 if (!isCurrent) {
                     Spacer(Modifier.height(6.dp))
                     Surface(color=PriOrangeLight, shape=RoundedCornerShape(8.dp),
-                        modifier=Modifier.fillMaxWidth().clickable{ mealsExpanded=!mealsExpanded }) {
+                        modifier=Modifier.fillMaxWidth()
+                            .clickable{ mealsExpanded=!mealsExpanded }) {
                         Row(Modifier.padding(horizontal=10.dp, vertical=6.dp),
                             verticalAlignment=Alignment.CenterVertically) {
                             Text(if(mealsExpanded) "▲" else "▼", fontSize=12.sp, color=PriOrange)
