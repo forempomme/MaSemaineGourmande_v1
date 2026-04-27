@@ -69,6 +69,7 @@ data class MealEntity(
     val weekKey: String,   // ISO key e.g. "2024-W03"
     val recipeId: String,
     val persons: Int,
+    val done: Boolean = false,
     val addedAt: Long = System.currentTimeMillis()
 )
 
@@ -82,6 +83,7 @@ data class ShoppingItemEntity(
     val fromRecipeId: String? = null,
     val checked: Boolean = false,
     val sortOrder: Int = 0,
+    val done: Boolean = false,
     val addedAt: Long = System.currentTimeMillis()
 )
 
@@ -103,6 +105,7 @@ data class PantryEntity(
     @PrimaryKey val id: String,
     val name: String,
     val checked: Boolean = false,   // true = en stock → excluded from shopping
+    val done: Boolean = false,
     val addedAt: Long = System.currentTimeMillis()
 )
 
