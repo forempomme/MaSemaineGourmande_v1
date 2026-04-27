@@ -39,8 +39,8 @@ import kotlinx.serialization.json.Json
 private val IMPORT_EMOJIS = listOf(
     "🍗","🥩","🐟","🍔","🥓","🌭","🍖","🦐","🦞","🦀","🦑","🐙","🍣","🍱","🍤",
     "🥦","🥕","🍅","🥑","🧅","🧄","🌽","🫛","🥬","🫑","🌶️","🥒","🍆","🥔","🫚",
-    "🍋","🍊","🍎","🍓","🫐","🍇","🍑","🥭","🍍","🍌","🍒","🍈",
-    "🍕","🍝","🍜","🍲","🥘","🫕","🍛","🍚","🥗","🥪","🌮","🌯","🥙","🍳","🥞","🧇",
+    "🍋","🍊","🍎","🍓","🫐","🍇","🍑","🥭","🍍","🍌","🍒",
+    "🍕","🍝","🍜","🍲","🥘","🫕","🍛","🍚","🥗","🥪","🌮","🌯","🥙","🍳","🥞",
     "🧀","🥛","🧁","🎂","🍰","🥧","🥐","🥖","🍞","🫙","🥫","🧂","☕","🍵","🍽️"
 )
 
@@ -174,8 +174,10 @@ private fun SuccessPanel(
                     // Emoji + Name
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { showEmojiPicker = !showEmojiPicker }) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { showEmojiPicker = !showEmojiPicker }
+                        ) {
                             Text(emoji, fontSize = 38.sp)
                             Text("Changer", fontSize = 9.sp, color = Color.White.copy(alpha=0.7f))
                         }
@@ -199,6 +201,18 @@ private fun SuccessPanel(
                                     fontWeight = FontWeight.ExtraBold, fontSize = 17.sp
                                 )
                             )
+                        }
+                    }
+
+                    if (timeStr != null) {
+                        Surface(color=Color.White.copy(alpha=0.18f), shape=RoundedCornerShape(20.dp)) {
+                            Row(Modifier.padding(horizontal=12.dp,vertical=6.dp),
+                                verticalAlignment=Alignment.CenterVertically,
+                                horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                Text("⏱️", fontSize=14.sp)
+                                Text(timeStr, fontSize=13.sp, fontWeight=FontWeight.Bold, color=Color.White)
+                                Text("de préparation", fontSize=11.sp, color=Color.White.copy(alpha=0.8f))
+                            }
                         }
                     }
 
