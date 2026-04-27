@@ -111,7 +111,7 @@ interface ImportHistoryDao {
         PantryEntity::class,
         com.masemainegourmande.data.model.ImportHistoryEntity::class
     ],
-    version = 4,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
