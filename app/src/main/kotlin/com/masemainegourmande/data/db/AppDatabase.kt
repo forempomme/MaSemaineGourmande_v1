@@ -36,6 +36,9 @@ interface MealDao {
     suspend fun deleteByWeek(key: String)
     @Query("UPDATE meals SET persons = :persons WHERE id = :id")
     suspend fun updatePersons(id: String, persons: Int)
+
+    @Query("UPDATE meals SET done = :done WHERE id = :id")
+    suspend fun updateDone(id: String, done: Boolean)
 }
 
 // ─── Shopping ────────────────────────────────────────────────
@@ -108,7 +111,7 @@ interface ImportHistoryDao {
         PantryEntity::class,
         com.masemainegourmande.data.model.ImportHistoryEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

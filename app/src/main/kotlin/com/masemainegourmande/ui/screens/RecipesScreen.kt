@@ -1,8 +1,7 @@
 package com.masemainegourmande.ui.screens
 
-import android.content.Intent
-
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateSet
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,24 +47,9 @@ val RECIPE_TAGS = listOf(
 )
 
 val FOOD_EMOJIS = listOf(
-    // Viandes & poissons
-    "🍗","🥩","🐟","🍔","🥓","🌭","🍖","🦐","🦞","🦀","🦑","🐙","🍣","🍱","🍤",
-    // Légumes
-    "🥦","🥕","🍅","🥑","🧅","🧄","🌽","🫛","🥬","🫑","🌶️","🥒","🍆","🥔","🫚",
-    "🥝","🌿","🌾","🫘","🫒","🥜","🫚",
-    // Fruits
-    "🍋","🍊","🍎","🍓","🫐","🍇","🍑","🥭","🍍","🍌","🍒","🍈","🍏","🫒",
-    // Plats cuisinés
-    "🍕","🍝","🍜","🍲","🥘","🫕","🍛","🍚","🍙","🍥","🥗","🥪","🌮","🌯","🥙",
-    "🫔","🧆","🥚","🍳","🥞","🧇","🧈",
-    // Produits laitiers & divers
-    "🧀","🥛","🍦","🍧","🍨","🥐","🥖","🍞","🥨","🫙","🥫",
-    // Desserts & snacks
-    "🧁","🎂","🍰","🥧","🍮","🍯","🍫","🍬","🍭","🍪","🥜","🌰","🍿",
-    // Boissons
-    "☕","🍵","🧃","🥤","🫖",
-    // Divers cuisine
-    "🍽️","🫕","🧂","🫙","🥄","🍴"
+    "🍗","🥩","🐟","🍔","🥚","🧀","🥛","🍕","🍝","🍜","🍲","🥘","🥗",
+    "🍱","🍣","🌮","🌯","🥙","🍞","🥖","🧁","🎂","🍰","🥧","🍨","🥞","🫕","🥦","🥕","🍅",
+    "🥑","🌽","🍋","🍎","🍓","🧅","🧄","🫚","🍳","🍽️","🫙","🥫","🧆","🥜","🌿","🫛"
 )
 
 private val jsonSerializer = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -337,11 +320,10 @@ private fun RecipeCard(
                             repeat(5 - recipe.rating) { Text("★", fontSize = 9.sp, color = BorderBeige) }
                         }
                     }
-                    Row(horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("👤 ${recipe.portions}p", fontSize = 9.sp, color = TextMuted)
                         if (recipe.cookTimeMinutes > 0) {
-                            val t = if (recipe.cookTimeMinutes >= 60)
-                                "${recipe.cookTimeMinutes/60}h${if(recipe.cookTimeMinutes%60>0)"${recipe.cookTimeMinutes%60}m" else ""}"
+                            val t = if (recipe.cookTimeMinutes >= 60) "${recipe.cookTimeMinutes/60}h${if (recipe.cookTimeMinutes%60 > 0) "${recipe.cookTimeMinutes%60}m" else ""}"
                             else "${recipe.cookTimeMinutes}m"
                             Text("⏱ $t", fontSize = 9.sp, color = TextMuted)
                         }
@@ -456,6 +438,11 @@ internal fun RecipeDetailSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatChip("🕐", lastCookedLabel ?: "Jamais", "Dernière fois", modifier = Modifier.weight(1f))
                 StatChip("🍽️", cookCount.toString(), "fois cuisinée", highlight = true, modifier = Modifier.weight(1f))
+                if (recipe.cookTimeMinutes > 0) {
+                    val tDisplay = if (recipe.cookTimeMinutes >= 60) "${recipe.cookTimeMinutes/60}h${if (recipe.cookTimeMinutes%60 > 0) "${recipe.cookTimeMinutes%60}min" else ""}"
+                    else "${recipe.cookTimeMinutes}min"
+                    StatChip("⏱️", tDisplay, "Durée", modifier = Modifier.weight(1f))
+                }
             }
 
             // Portions stepper
@@ -489,34 +476,32 @@ internal fun RecipeDetailSheet(
                 HorizontalDivider(color = BorderBeige)
             }
 
-            // Steps with checkboxes (reset when sheet dismissed)
+            // Steps (checkable)
             val steps = recipe.parseSteps()
             if (steps.isNotEmpty()) {
-                val checkedSteps = remember(recipe.id) { mutableStateSetOf<Int>() }
+                val checkedSteps = remember(recipe.id) { androidx.compose.runtime.mutableStateListOf<Int>() }
                 Text("📋 Préparation", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                steps.forEachIndexed { i, step ->
-                    val done = i in checkedSteps
-                    Surface(
-                        color  = if (done) Color(0xFF1A3028) else Color.Transparent,
-                        shape  = RoundedCornerShape(10.dp),
-                        border = if (done) BorderStroke(1.dp, AccGreen) else null,
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            if (done) checkedSteps.remove(i) else checkedSteps.add(i)
-                        }
+                steps.forEachIndexed { stepIdx, stepText ->
+                    val stepDone = checkedSteps.contains(stepIdx)
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                            .background(if (stepDone) Color(0xFF1A3028) else Color.Transparent, RoundedCornerShape(10.dp))
+                            .then(if (stepDone) Modifier.border(1.dp, AccGreen, RoundedCornerShape(10.dp)) else Modifier)
+                            .clickable { if (stepDone) checkedSteps.remove(stepIdx) else checkedSteps.add(stepIdx) }
                     ) {
-                        Row(Modifier.padding(horizontal=8.dp, vertical=7.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.Top) {
-                            Surface(color = if (done) AccGreen else PriOrange,
+                            Surface(color = if (stepDone) AccGreen else PriOrange,
                                 shape = CircleShape, modifier = Modifier.size(24.dp)) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text(if(done) "✓" else "${i+1}", fontSize=11.sp,
-                                        fontWeight=FontWeight.ExtraBold, color=Color.White)
+                                    Text(if (stepDone) "✓" else "${stepIdx + 1}",
+                                        fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                                 }
                             }
-                            Text(step, fontSize=14.sp, lineHeight=22.sp, modifier=Modifier.weight(1f),
-                                color = if (done) AccGreen else TextBrown,
-                                textDecoration = if (done)
+                            Text(stepText, fontSize = 14.sp, lineHeight = 22.sp,
+                                modifier = Modifier.weight(1f),
+                                color = if (stepDone) AccGreen else TextBrown,
+                                textDecoration = if (stepDone)
                                     androidx.compose.ui.text.style.TextDecoration.LineThrough
                                 else androidx.compose.ui.text.style.TextDecoration.None)
                         }
@@ -545,11 +530,48 @@ internal fun RecipeDetailSheet(
                 Spacer(Modifier.width(8.dp))
                 Text("Ajouter à la liste de courses", fontWeight = FontWeight.Bold)
             }
-            OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(12.dp)) {
-                Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Modifier la recette")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onEdit,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp)); Text("Modifier")
+                }
+                val shareCtx = androidx.compose.ui.platform.LocalContext.current
+                OutlinedButton(
+                    onClick = {
+                        val shareText = buildString {
+                            appendLine("${recipe.emoji} ${recipe.name}")
+                            if (recipe.cookTimeMinutes > 0) {
+                                val t = if (recipe.cookTimeMinutes>=60) "${recipe.cookTimeMinutes/60}h${if(recipe.cookTimeMinutes%60>0)"${recipe.cookTimeMinutes%60}min" else ""}" else "${recipe.cookTimeMinutes}min"
+                                appendLine("⏱️ Durée : $t")
+                            }
+                            appendLine("👤 ${recipe.portions} portions"); appendLine()
+                            appendLine("🧂 Ingrédients")
+                            recipe.parseIngredients().forEach { ing ->
+                                appendLine("• ${if(ing.qty>0) "${ing.qty} ${ing.unit}".trim()+" " else ""}${ing.name}")
+                            }
+                            val stepsToShare = recipe.parseSteps()
+                            if (stepsToShare.isNotEmpty()) {
+                                appendLine(); appendLine("📋 Préparation")
+                                stepsToShare.forEachIndexed { n, s -> appendLine("${n+1}. $s") }
+                            }
+                            if (recipe.url.isNotBlank()) { appendLine(); appendLine("🔗 ${recipe.url}") }
+                        }.trim()
+                        shareCtx.startActivity(
+                            android.content.Intent.createChooser(
+                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                }, "Partager la recette"))
+                    },
+                    modifier = Modifier.height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp)
+                ) {
+                    Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp)); Text("Partager")
+                }
             }
         }
     }
@@ -595,7 +617,7 @@ private fun RecipeEditSheet(
     var ingredients by remember { mutableStateOf(ArrayList(recipe?.parseIngredients()
         ?: listOf(Ingredient("", 0.0, "")))) }
     var steps     by remember { mutableStateOf(ArrayList(recipe?.parseSteps() ?: listOf(""))) }
-    var cookTime by remember { mutableStateOf(if((recipe?.cookTimeMinutes?:0)>0) (recipe?.cookTimeMinutes?:0).toString() else "") }
+    var cookTime by remember { mutableStateOf(if ((recipe?.cookTimeMinutes ?: 0) > 0) (recipe?.cookTimeMinutes ?: 0).toString() else "") }
     var showEmojiPicker by remember { mutableStateOf(false) }
 
     Dialog(
@@ -621,31 +643,26 @@ private fun RecipeEditSheet(
                 Text(if (isNew) "Nouvelle recette" else "Modifier la recette",
                     fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color.White,
                     modifier = Modifier.weight(1f))
-                // Save button in header
                 if (name.isNotBlank()) {
                     TextButton(onClick = {
-                        val entity = (recipe ?: RecipeEntity(
+                        val saved = (recipe ?: RecipeEntity(
                             id = java.util.UUID.randomUUID().toString(),
                             name = "", emoji = "🍽️", portions = 1, url = ""
                         )).copy(
-                            name             = name.trim(),
-                            emoji            = emoji,
-                            portions         = portions,
-                            url              = url.trim(),
-                            note             = note.trim(),
-                            favorite         = favorite,
-                            rating           = rating,
-                            cookTimeMinutes  = cookTime.toIntOrNull() ?: 0,
-                            tags             = stringsToJson(tags),
-                            ingredients      = ingredientsToJson(
-                                ingredients.filter { it.name.isNotBlank() }),
-                            steps            = stringsToJson(
-                                steps.filter { it.isNotBlank() })
+                            name            = name.trim(),
+                            emoji           = emoji,
+                            portions        = portions,
+                            url             = url.trim(),
+                            note            = note.trim(),
+                            favorite        = favorite,
+                            rating          = rating,
+                            cookTimeMinutes = cookTime.toIntOrNull() ?: 0,
+                            tags            = stringsToJson(ArrayList(tags)),
+                            ingredients     = ingredientsToJson(ArrayList(ingredients.filter { it.name.isNotBlank() })),
+                            steps           = stringsToJson(ArrayList(steps.filter { it.isNotBlank() }))
                         )
-                        onSave(entity)
-                    }) {
-                        Text("Enregistrer", color = Color.White, fontWeight = FontWeight.Bold)
-                    }
+                        onSave(saved)
+                    }) { Text("Enregistrer", color = Color.White, fontWeight = FontWeight.Bold) }
                 }
                 IconButton(onClick = onClose) {
                     Icon(Icons.Default.Close, null, tint = Color.White)
@@ -705,7 +722,7 @@ private fun RecipeEditSheet(
                 }
             }
 
-            // Portions + URL + CookTime
+            // Portions + URL
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text("Portions", style = MaterialTheme.typography.labelSmall, color = TextMuted)
@@ -724,8 +741,9 @@ private fun RecipeEditSheet(
                 OutlinedTextField(value = url, onValueChange = { url = it },
                     label = { Text("URL (optionnel)") }, modifier = Modifier.weight(2f),
                     shape = RoundedCornerShape(10.dp), singleLine = true)
-                OutlinedTextField(value = cookTime, onValueChange = { cookTime = it },
-                    label = { Text("⏱️ Durée (min)") }, modifier = Modifier.width(90.dp),
+                OutlinedTextField(
+                    value = cookTime, onValueChange = { cookTime = it },
+                    label = { Text("⏱️ min") }, modifier = Modifier.width(72.dp),
                     shape = RoundedCornerShape(10.dp), singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
@@ -843,31 +861,3 @@ private fun RecipeEditSheet(
 
 private fun fmtQty(v: Double): String =
     if (v == v.toLong().toDouble()) v.toLong().toString() else "%.1f".format(v)
-
-private fun buildShareRecipeText(recipe: RecipeEntity): String = buildString {
-    appendLine("${recipe.emoji} ${recipe.name}")
-    if (recipe.cookTimeMinutes > 0) {
-        val t = if (recipe.cookTimeMinutes >= 60)
-            "${recipe.cookTimeMinutes/60}h${if(recipe.cookTimeMinutes%60>0) "${recipe.cookTimeMinutes%60}min" else ""}"
-        else "${recipe.cookTimeMinutes}min"
-        appendLine("⏱️ Durée : $t")
-    }
-    appendLine("👤 ${recipe.portions} portions")
-    appendLine()
-    appendLine("🧂 Ingrédients")
-    recipe.parseIngredients().forEach { ing ->
-        val qty = if (ing.qty > 0) "${ing.qty} ${ing.unit} ".trimEnd() + " " else ""
-        appendLine("• $qty${ing.name}")
-    }
-    if (recipe.steps.isNotEmpty()) {
-        appendLine()
-        appendLine("📋 Préparation")
-        recipe.parseSteps().forEachIndexed { i, step ->
-            appendLine("${i+1}. $step")
-        }
-    }
-    if (recipe.url.isNotBlank()) {
-        appendLine()
-        appendLine("🔗 ${recipe.url}")
-    }
-}.trim()

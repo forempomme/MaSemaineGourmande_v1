@@ -214,34 +214,28 @@ object JsonLdParser {
 
         val url = node.strOf("url","@id") ?: ""
 
-        // Time: prefer totalTime, fallback to cookTime + prepTime
-        val totalTime = parseDurationMinutes(node.strOf("totalTime"))
-        val cookTime  = parseDurationMinutes(node.strOf("cookTime"))
-        val prepTime  = parseDurationMinutes(node.strOf("prepTime"))
-        val timeMinutes = when {
-            totalTime > 0 -> totalTime
-            cookTime > 0 || prepTime > 0 -> cookTime + prepTime
-            else -> 0
-        }
+        val totalTime   = parseDurationMinutes(node.strOf("totalTime"))
+        val cookTime    = parseDurationMinutes(node.strOf("cookTime"))
+        val prepTime    = parseDurationMinutes(node.strOf("prepTime"))
+        val timeMinutes = if (totalTime > 0) totalTime else cookTime + prepTime
 
         return ParsedRecipe(
-            name             = name,
-            emoji            = EmojiGuesser.guess(name),
-            portions         = portions,
-            url              = url,
-            ingredients      = ingredients,
-            steps            = steps,
-            cookTimeMinutes  = timeMinutes
+            name            = name,
+            emoji           = EmojiGuesser.guess(name),
+            portions        = portions,
+            url             = url,
+            ingredients     = ingredients,
+            steps           = steps,
+            cookTimeMinutes = timeMinutes
         )
     }
 
+    // ── Duration helper ──────────────────────────────────────────
 
-    /** Parse ISO 8601 duration (PT1H30M → 90, PT45M → 45, PT2H → 120) */
     private fun parseDurationMinutes(iso: String?): Int {
         if (iso.isNullOrBlank()) return 0
-        var mins = 0
-        val h = Regex("(\d+)H").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-        val m = Regex("(\d+)M").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val h = Regex("""(\d+)H""").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val m = Regex("""(\d+)M""").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
         return h * 60 + m
     }
 

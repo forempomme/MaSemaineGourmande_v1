@@ -46,6 +46,7 @@ class AppRepository(private val db: AppDatabase) {
     }
 
     suspend fun deleteMeal(id: String) = db.mealDao().deleteById(id)
+    suspend fun updateMealDone(id: String, done: Boolean) = db.mealDao().updateDone(id, done)
 
     suspend fun updateMealPersons(id: String, persons: Int) =
         db.mealDao().updatePersons(id, persons)

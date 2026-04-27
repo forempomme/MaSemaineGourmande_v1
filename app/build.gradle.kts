@@ -15,7 +15,7 @@ android {
         minSdk        = 26
         targetSdk     = 35
         versionCode   = 1        // patché par sed dans le workflow
-        versionName   = "1.6.1"  // patché par sed dans le workflow
+        versionName   = "1.7.0"  // patché par sed dans le workflow
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
