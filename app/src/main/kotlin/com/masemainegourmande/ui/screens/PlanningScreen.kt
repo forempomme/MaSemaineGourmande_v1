@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -151,8 +152,9 @@ fun PlanningScreen(vm: PlanningViewModel, shoppingVm: ShoppingViewModel, default
                             },
                             onDetail    = { recipe -> detailRecipe = recipe },
                             onDelete    = { id -> vm.deleteMeal(id) },
-                            onMinus     = { id, cur -> vm.updatePersons(id, maxOf(1, cur-1)) },
-                            onPlus      = { id, cur -> vm.updatePersons(id, cur+1) }
+                            onMinus       = { id, cur -> vm.updatePersons(id, maxOf(1, cur-1)) },
+                            onPlus        = { id, cur -> vm.updatePersons(id, cur+1) },
+                            onToggleDone  = { id, done -> vm.toggleMealDone(id, done) }
                         )
                     }
                 }
@@ -219,8 +221,10 @@ private fun WeekCard(
     week: Int, monday: String, sunday: String, isCurrent: Boolean,
     meals: List<MealWithRecipe>,
     onAdd: () -> Unit, onDuplicate: () -> Unit, onShare: () -> Unit, onDetail: (RecipeEntity) -> Unit,
-    onDelete: (String) -> Unit, onMinus: (String,Int) -> Unit, onPlus: (String,Int) -> Unit
+    onDelete: (String) -> Unit, onMinus: (String,Int) -> Unit, onPlus: (String,Int) -> Unit,
+    onToggleDone: (String, Boolean) -> Unit = { _, _ -> }
 ) {
+    var expanded by remember { mutableStateOf(isCurrent) }
     Card(
         shape  = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = if(isCurrent) PriOrangeLight else Color.White),
@@ -259,14 +263,37 @@ private fun WeekCard(
                 }
             }
             if (meals.isNotEmpty()) {
-                Spacer(Modifier.height(9.dp))
-                meals.forEach { mwr ->
-                    MealRow(mwr=mwr,
-                        onDetail={ onDetail(mwr.recipe) },
-                        onDelete={ onDelete(mwr.meal.id) },
-                        onMinus={ onMinus(mwr.meal.id, mwr.meal.persons) },
-                        onPlus={ onPlus(mwr.meal.id, mwr.meal.persons) })
+                if (!isCurrent) {
                     Spacer(Modifier.height(6.dp))
+                    Surface(
+                        color    = if (expanded) PriOrangeLight else AccGreenLight,
+                        shape    = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
+                    ) {
+                        Row(Modifier.padding(horizontal=10.dp, vertical=6.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text(if (expanded) "▲" else "▼", fontSize=11.sp,
+                                color = if (expanded) PriOrange else AccGreen)
+                            Spacer(Modifier.width(6.dp))
+                            Text("${meals.size} repas planifié${if (meals.size > 1) "s" else ""}",
+                                fontSize=12.sp, fontWeight=FontWeight.SemiBold,
+                                color = if (expanded) PriOrange else AccGreen)
+                        }
+                    }
+                }
+                if (expanded) {
+                    Spacer(Modifier.height(9.dp))
+                    meals.forEach { mwr ->
+                        MealRow(
+                            mwr          = mwr,
+                            onDetail     = { onDetail(mwr.recipe) },
+                            onDelete     = { onDelete(mwr.meal.id) },
+                            onMinus      = { onMinus(mwr.meal.id, mwr.meal.persons) },
+                            onPlus       = { onPlus(mwr.meal.id, mwr.meal.persons) },
+                            onToggleDone = { onToggleDone(mwr.meal.id, mwr.meal.done) }
+                        )
+                        Spacer(Modifier.height(6.dp))
+                    }
                 }
             }
         }
@@ -274,19 +301,38 @@ private fun WeekCard(
 }
 
 @Composable
-private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit, onMinus: ()->Unit, onPlus: ()->Unit) {
+private fun MealRow(
+    mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit,
+    onMinus: ()->Unit, onPlus: ()->Unit,
+    onToggleDone: ()->Unit = {}
+) {
+    val done = mwr.meal.done
     Row(
         Modifier.fillMaxWidth()
-            .background(Color(0xFFE8EEF8), RoundedCornerShape(10.dp))
-            .border(1.dp, Color(0xFFB8C8E0), RoundedCornerShape(10.dp))
+            .background(
+                if (done) Color(0xFF1A3028) else Color(0xFFE8EEF8),
+                RoundedCornerShape(10.dp))
+            .border(
+                1.dp,
+                if (done) AccGreen else Color(0xFFB8C8E0),
+                RoundedCornerShape(10.dp))
             .padding(horizontal=10.dp, vertical=8.dp),
         verticalAlignment=Alignment.CenterVertically,
         horizontalArrangement=Arrangement.spacedBy(7.dp)
     ) {
         Text(mwr.recipe.emoji, fontSize=18.sp,
             modifier=Modifier.noRipple { onDetail() })
-        Text(mwr.recipe.name, fontSize=13.sp, fontWeight=FontWeight.SemiBold, color=Color(0xFF1A2A3A),
-            modifier=Modifier.weight(1f).noRipple { onDetail() }, maxLines=1, overflow=TextOverflow.Ellipsis)
+        Text(
+            mwr.recipe.name,
+            fontSize   = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color      = if (done) AccGreen else Color(0xFF1A2A3A),
+            modifier   = Modifier.weight(1f).noRipple { onDetail() },
+            maxLines   = 1, overflow = TextOverflow.Ellipsis,
+            textDecoration = if (done)
+                androidx.compose.ui.text.style.TextDecoration.LineThrough
+            else androidx.compose.ui.text.style.TextDecoration.None
+        )
         Row(verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(4.dp)) {
             Surface(color=PriOrangeLight, shape=RoundedCornerShape(6.dp),
                 modifier=Modifier.size(22.dp).noRipple { onMinus() }) {
@@ -295,7 +341,8 @@ private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit,
                 }
             }
             Text(mwr.meal.persons.toString(), fontSize=13.sp, fontWeight=FontWeight.Bold,
-                color=Color(0xFF1A2A3A), modifier=Modifier.widthIn(min=16.dp), textAlign=TextAlign.Center)
+                color=if (done) AccGreen else Color(0xFF1A2A3A),
+                modifier=Modifier.widthIn(min=16.dp), textAlign=TextAlign.Center)
             Surface(color=PriOrangeLight, shape=RoundedCornerShape(6.dp),
                 modifier=Modifier.size(22.dp).noRipple { onPlus() }) {
                 Box(contentAlignment=Alignment.Center) {
@@ -303,6 +350,17 @@ private fun MealRow(mwr: MealWithRecipe, onDetail: ()->Unit, onDelete: ()->Unit,
                 }
             }
             Text("👤", fontSize=10.sp, color=TextMuted)
+        }
+        Surface(
+            color    = if (done) AccGreen else Color.Transparent,
+            shape    = CircleShape,
+            border   = BorderStroke(1.5.dp, AccGreen),
+            modifier = Modifier.size(26.dp).noRipple { onToggleDone() }
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("✓", fontSize=13.sp, fontWeight=FontWeight.ExtraBold,
+                    color = if (done) Color.White else AccGreen)
+            }
         }
         Box(Modifier.size(24.dp).noRipple { onDelete() }, contentAlignment=Alignment.Center) {
             Text("✕", fontSize=15.sp, color=TextMuted)
