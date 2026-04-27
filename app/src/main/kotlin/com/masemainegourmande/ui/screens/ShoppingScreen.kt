@@ -102,13 +102,13 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
     fun addItem() {
         if (addName.isNotBlank()) {
             vm.addManualItem(addName.trim(), addQty.toDoubleOrNull() ?: 0.0, addUnit.trim())
-            addName = ""; addQty = ""; addUnit = ""  // reset unit too
+            addName = ""; addQty = ""; addUnit = ""
         }
     }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor        = PriOrange, unfocusedBorderColor      = BorderBeige,
-        focusedTextColor          = Color(0xFF1A1A1A), unfocusedTextColor = Color(0xFF1A1A1A),
+        focusedTextColor          = TextBrown, unfocusedTextColor         = TextBrown,
         focusedContainerColor     = MaterialTheme.colorScheme.surface,
         unfocusedContainerColor   = MaterialTheme.colorScheme.surface,
         focusedPlaceholderColor   = TextMuted, unfocusedPlaceholderColor = TextMuted
@@ -123,66 +123,57 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                     .padding(horizontal = 10.dp, vertical = 5.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    // Nom
                     OutlinedTextField(value=addName, onValueChange={addName=it},
-                        placeholder={Text("Nom de l'article…", fontSize=12.sp, color=TextMuted)},
-                        modifier=Modifier.weight(1f).height(48.dp),
+                        placeholder={Text("Article…",fontSize=11.sp)},
+                        modifier=Modifier.weight(1f).height(44.dp),
                         shape=RoundedCornerShape(8.dp), singleLine=true,
-                        textStyle=androidx.compose.ui.text.TextStyle(
-                            fontSize=13.sp, color=TextBrown,
-                            lineHeightStyle=androidx.compose.ui.text.style.LineHeightStyle(
-                                alignment=androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
-                                trim=androidx.compose.ui.text.style.LineHeightStyle.Trim.Both)),
+                        textStyle=LocalTextStyle.current.copy(fontSize=13.sp, color=TextBrown),
                         keyboardOptions=KeyboardOptions(
                             capitalization=androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
                             imeAction=androidx.compose.ui.text.input.ImeAction.Next),
                         colors=fieldColors)
-                    // Quantité
                     OutlinedTextField(value=addQty, onValueChange={addQty=it},
-                        placeholder={Box(Modifier.fillMaxWidth(), contentAlignment=Alignment.Center){
-                            Text("Qté", fontSize=11.sp, color=TextMuted) }},
-                        modifier=Modifier.width(56.dp).height(48.dp),
+                        placeholder={Text("Qté",fontSize=10.sp)},
+                        modifier=Modifier.width(48.dp).height(44.dp),
                         shape=RoundedCornerShape(8.dp), singleLine=true,
-                        textStyle=androidx.compose.ui.text.TextStyle(fontSize=13.sp, color=TextBrown,
-                            textAlign=androidx.compose.ui.text.style.TextAlign.Center),
+                        textStyle=LocalTextStyle.current.copy(fontSize=13.sp, color=TextBrown, textAlign=androidx.compose.ui.text.style.TextAlign.Center),
                         keyboardOptions=KeyboardOptions(
                             keyboardType=androidx.compose.ui.text.input.KeyboardType.Decimal,
                             imeAction=androidx.compose.ui.text.input.ImeAction.Next),
                         colors=fieldColors)
-                    // Unité — dropdown, rien par défaut
-                    var unitExpanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(expanded=unitExpanded, onExpandedChange={unitExpanded=it},
-                        modifier=Modifier.width(74.dp)) {
-                        OutlinedTextField(value=addUnit, onValueChange={},
+                    var unitMenuOpen by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded=unitMenuOpen, onExpandedChange={unitMenuOpen=it},
+                        modifier=Modifier.width(76.dp)) {
+                        OutlinedTextField(
+                            value=addUnit, onValueChange={},
                             readOnly=true, singleLine=true,
-                            placeholder={Box(Modifier.fillMaxWidth(), contentAlignment=Alignment.Center){
-                                Text("unité", fontSize=10.sp, color=TextMuted) }},
-                            modifier=Modifier.menuAnchor().height(48.dp),
+                            placeholder={Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center){
+                                Text("unité",fontSize=10.sp,color=TextMuted)}},
+                            modifier=Modifier.menuAnchor().height(44.dp),
                             shape=RoundedCornerShape(8.dp),
-                            textStyle=androidx.compose.ui.text.TextStyle(fontSize=12.sp, color=TextBrown,
+                            textStyle=LocalTextStyle.current.copy(
+                                fontSize=12.sp, color=TextBrown,
                                 textAlign=androidx.compose.ui.text.style.TextAlign.Center),
-                            trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded)},
-                            colors=OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor=PriOrange, unfocusedBorderColor=BorderBeige,
-                                focusedTextColor=TextBrown, unfocusedTextColor=TextBrown,
-                                focusedContainerColor=MaterialTheme.colorScheme.surfaceVariant,
-                                unfocusedContainerColor=MaterialTheme.colorScheme.surfaceVariant,
-                                focusedTrailingIconColor=TextMuted, unfocusedTrailingIconColor=TextMuted))
-                        ExposedDropdownMenu(expanded=unitExpanded, onDismissRequest={unitExpanded=false}) {
-                            listOf("pcs","g","kg","ml","cl","l","c.s.","c.c.","botte","sachet","boîte").forEach { u ->
-                                DropdownMenuItem(text={Text(u, fontSize=13.sp)},
-                                    onClick={addUnit=u; unitExpanded=false})
+                            trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(unitMenuOpen)},
+                            colors=fieldColors)
+                        ExposedDropdownMenu(expanded=unitMenuOpen,
+                            onDismissRequest={unitMenuOpen=false}) {
+                            listOf("","pcs","g","kg","ml","cl","l","c.s.","c.c.",
+                                "botte","sachet","boîte","tranche").forEach { u ->
+                                DropdownMenuItem(
+                                    text={Text(if(u.isEmpty()) "— aucune —" else u, fontSize=13.sp)},
+                                    onClick={addUnit=u; unitMenuOpen=false})
                             }
                         }
                     }
-                    // Bouton +
-                    Surface(color=if(addName.isNotBlank()) PriOrangeDark else BorderBeige,
+                    Surface(color=if(addName.isNotBlank()) PriOrange else PriOrangeLight,
                         shape=RoundedCornerShape(8.dp),
-                        modifier=Modifier.size(48.dp).clickable(enabled=addName.isNotBlank()){addItem()}) {
+                        modifier=Modifier.height(44.dp).width(44.dp).clickable(enabled=addName.isNotBlank()){addItem()}) {
                         Box(contentAlignment=Alignment.Center) {
                             Icon(Icons.Default.Add, null,
-                                tint=if(addName.isNotBlank()) Color.White else TextMuted,
-                                modifier=Modifier.size(22.dp))
+                                tint=if(addName.isNotBlank()) Color.White else PriOrange,
+                                modifier=Modifier.size(20.dp))
                         }
                     }
                 }
@@ -355,7 +346,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                         horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                                         Text("⠿", fontSize=12.sp, color=BorderBeige)
                                         Text(item.name, fontSize=13.sp, fontWeight=FontWeight.Medium,
-                                            color=Color(0xFF1A1A1A), modifier=Modifier.weight(1f),
+                                            color=TextBrown, modifier=Modifier.weight(1f),
                                             maxLines=1, overflow=TextOverflow.Ellipsis)
                                         if(item.qty > 0 || item.unit.isNotBlank()) {
                                             Text(buildString {
