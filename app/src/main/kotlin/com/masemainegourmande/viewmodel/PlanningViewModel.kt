@@ -57,6 +57,13 @@ class PlanningViewModel(private val repo: AppRepository) : ViewModel() {
         viewModelScope.launch { repo.addMeals(weekKey, selections) }
     }
 
+
+    fun toggleMealDone(mealId: String, currentDone: Boolean) {
+        viewModelScope.launch {
+            repo.updateMealDone(mealId, !currentDone)
+        }
+    }
+
     fun deleteMeal(id: String) {
         viewModelScope.launch { repo.deleteMeal(id) }
     }
