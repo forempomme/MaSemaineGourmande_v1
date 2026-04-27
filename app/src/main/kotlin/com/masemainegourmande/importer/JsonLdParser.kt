@@ -240,8 +240,8 @@ object JsonLdParser {
     private fun parseDurationMinutes(iso: String?): Int {
         if (iso.isNullOrBlank()) return 0
         var mins = 0
-        val h = Regex("(\d+)H").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-        val m = Regex("(\d+)M").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val h = Regex("(\\d+)H").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val m = Regex("(\\d+)M").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
         return h * 60 + m
     }
 
