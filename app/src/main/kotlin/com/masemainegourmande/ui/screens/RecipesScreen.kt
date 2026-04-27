@@ -3,6 +3,7 @@ package com.masemainegourmande.ui.screens
 import android.content.Intent
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateSet
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -492,17 +492,20 @@ internal fun RecipeDetailSheet(
             // Steps with checkboxes (reset when sheet dismissed)
             val steps = recipe.parseSteps()
             if (steps.isNotEmpty()) {
-                val checkedSteps = remember(recipe.id) { mutableStateSetOf<Int>() }
+                val checkedSteps = remember(recipe.id) { androidx.compose.runtime.mutableStateListOf<Int>() }
                 Text("📋 Préparation", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 steps.forEachIndexed { i, step ->
-                    val done = i in checkedSteps
-                    Surface(
-                        color  = if (done) Color(0xFF1A3028) else Color.Transparent,
-                        shape  = RoundedCornerShape(10.dp),
-                        border = if (done) BorderStroke(1.dp, AccGreen) else null,
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            if (done) checkedSteps.remove(i) else checkedSteps.add(i)
-                        }
+                    val done = checkedSteps.contains(i)
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(
+                                if (done) Color(0xFF1A3028) else Color.Transparent,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .then(if (done) Modifier.border(1.dp, AccGreen, RoundedCornerShape(10.dp)) else Modifier)
+                            .clickable {
+                                if (done) checkedSteps.remove(i) else if (!done) checkedSteps.add(i)
+                            }
                     ) {
                         Row(Modifier.padding(horizontal=8.dp, vertical=7.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
