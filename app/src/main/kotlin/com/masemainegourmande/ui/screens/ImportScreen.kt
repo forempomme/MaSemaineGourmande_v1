@@ -173,7 +173,7 @@ private fun SuccessPanel(
                     // Emoji + Name
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(modifier=Modifier.clickable{ showEmojiPicker=!showEmojiPicker }) {
+                        Box(modifier=Modifier.clickable { showEmojiPicker = !showEmojiPicker }) {
                             Text(emoji, fontSize=38.sp)
                             Text("✏️", fontSize=12.sp,
                                 modifier=Modifier.align(Alignment.BottomEnd))
