@@ -5,10 +5,11 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
@@ -25,8 +26,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -38,23 +39,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.masemainegourmande.data.model.ShoppingItemEntity
 import com.masemainegourmande.ui.theme.*
 import com.masemainegourmande.viewmodel.ShoppingGroup
 import com.masemainegourmande.viewmodel.ShoppingViewModel
 import kotlinx.coroutines.delay
 
-private val CatHeaderBg = Color(0xFF181C24)
-private val ItemRowBg   = Color(0xFF222840)
-
 private val CAT_EMOJI = mapOf(
     "Viandes" to "🥩", "Produits" to "🧀", "Œufs" to "🥚",
-    "Fruits"  to "🥦", "Féculents" to "🌾", "Épicerie" to "🫙",
+    "Fruits" to "🥦", "Féculents" to "🌾", "Épicerie" to "🫙",
     "Boissons" to "🥤", "Boulangerie" to "🥖", "Autre" to "🛍️"
 )
-private fun catEmoji(n: String) =
-    CAT_EMOJI.entries.firstOrNull { n.startsWith(it.key) }?.value ?: "📦"
+private fun catEmoji(n: String) = CAT_EMOJI.entries.firstOrNull { n.startsWith(it.key) }?.value ?: "📦"
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -65,393 +61,286 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
     val haptic      = LocalHapticFeedback.current
     val density     = LocalDensity.current
 
-    // ── Drag-drop: keep user's category order across vmGroups updates ─────
-    // Strategy: localCatOrder saves the user-dragged sequence of categoryIds.
-    // LaunchedEffect respects this order and never overwrites it with vmGroups order.
-    // This completely avoids the snap-back caused by Room emitting intermediate states.
-    val localGroups     = remember { mutableStateListOf<ShoppingGroup>() }
-    var localCatOrder   by remember { mutableStateOf<List<String>?>(null) }
-    var isDragging      by remember { mutableStateOf(false) }
-
-    val localItems = remember { mutableStateMapOf<String, MutableList<ShoppingItemEntity>>() }
-
+    // ── Local working copy of groups (for drag-drop) ─────────────────────────
+    // The flag `isDragging` prevents LaunchedEffect from resetting local state mid-drag
+    val localGroups = remember { mutableStateListOf<ShoppingGroup>() }
+    var isDragging  by remember { mutableStateOf(false) }
     LaunchedEffect(vmGroups) {
-        if (isDragging) return@LaunchedEffect
+        if (!isDragging) { localGroups.clear(); localGroups.addAll(vmGroups) }
+    }
 
-        val order = localCatOrder
-        if (order == null) {
-            // First load — take VM order
-            localGroups.clear()
-            localGroups.addAll(vmGroups)
-            localCatOrder = vmGroups.map { it.categoryId }
-        } else {
-            // User has dragged — respect their order, only update item contents
-            val vmById = vmGroups.associateBy { it.categoryId }
-            // Re-apply saved order with updated item data
-            val reordered = order.mapNotNull { id -> vmById[id] }
-            // Add categories that appeared since last sync
-            val newCats = vmGroups.filter { g -> order.none { it == g.categoryId } }
-            localGroups.clear()
-            localGroups.addAll(reordered + newCats)
-            if (newCats.isNotEmpty()) localCatOrder = localGroups.map { it.categoryId }
+    // Per-category local item copies
+    val localItems = remember { mutableStateMapOf<String, MutableList<ShoppingItemEntity>>() }
+    LaunchedEffect(vmGroups) {
+        if (!isDragging) {
+            vmGroups.forEach { g ->
+                localItems[g.categoryId] = g.items.toMutableList()
+            }
         }
-        // Always refresh item lists
-        vmGroups.forEach { g -> localItems[g.categoryId] = g.items.toMutableList() }
     }
 
     // Drag state
-    val catHeightPx     = with(density) { 50.dp.toPx() }
-    val itemHeightPx    = with(density) { 46.dp.toPx() }
-    var catDragIdx      by remember { mutableStateOf<Int?>(null) }
-    var catDeltaAcc     by remember { mutableFloatStateOf(0f) }
-    var catDragOffsetPx by remember { mutableFloatStateOf(0f) }
-    val itemDragIdx     = remember { mutableStateMapOf<String, Int>() }
-    val itemDeltaAcc    = remember { mutableStateMapOf<String, Float>() }
-    val itemDragOffPx   = remember { mutableStateMapOf<String, Float>() }
+    val catHeightPx  = with(density) { 44.dp.toPx() }
+    val itemHeightPx = with(density) { 46.dp.toPx() }
+    var catDragIdx   by remember { mutableStateOf<Int?>(null) }
+    var catDeltaAcc  by remember { mutableFloatStateOf(0f) }
+    val itemDragIdx  = remember { mutableStateMapOf<String, Int>() }
+    val itemDeltaAcc = remember { mutableStateMapOf<String, Float>() }
 
     // Add bar
-    var addName       by remember { mutableStateOf("") }
-    var addQty        by remember { mutableStateOf("") }
-    var addUnit       by remember { mutableStateOf("pcs") }
-    var unitExpanded  by remember { mutableStateOf(false) }
+    var addName  by remember { mutableStateOf("") }
+    var addQty   by remember { mutableStateOf("") }
+    var addUnit  by remember { mutableStateOf("") }
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
     var showShare by remember { mutableStateOf(false) }
     var showMenu  by remember { mutableStateOf(false) }
     var undoItem  by remember { mutableStateOf<ShoppingItemEntity?>(null) }
+
     LaunchedEffect(undoItem) { if (undoItem != null) { delay(3000); undoItem = null } }
 
     fun addItem() {
         if (addName.isNotBlank()) {
             vm.addManualItem(addName.trim(), addQty.toDoubleOrNull() ?: 0.0, addUnit.trim())
-            addName = ""; addQty = ""; addUnit = ""
+            addName = ""; addQty = ""; addUnit = ""  // reset unit too
         }
     }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor        = PriOrange,
-        unfocusedBorderColor      = BorderBeige,
-        focusedTextColor          = TextBrown,
-        unfocusedTextColor        = TextBrown,
-        focusedContainerColor     = MaterialTheme.colorScheme.surfaceVariant,
-        unfocusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant,
-        focusedPlaceholderColor   = TextMuted,
-        unfocusedPlaceholderColor = TextMuted
+        focusedBorderColor        = PriOrange, unfocusedBorderColor      = BorderBeige,
+        focusedTextColor          = Color(0xFF1A1A1A), unfocusedTextColor = Color(0xFF1A1A1A),
+        focusedContainerColor     = MaterialTheme.colorScheme.surface,
+        unfocusedContainerColor   = MaterialTheme.colorScheme.surface,
+        focusedPlaceholderColor   = TextMuted, unfocusedPlaceholderColor = TextMuted
     )
 
     Box(Modifier.fillMaxSize().background(BgCream)) {
-        LazyColumn(
-            contentPadding = PaddingValues(start=12.dp, end=12.dp, top=10.dp, bottom=80.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
+        LazyColumn(contentPadding = PaddingValues(bottom = 80.dp), modifier = Modifier.fillMaxSize()) {
 
-            // ── Header ───────────────────────────────────────
-            item(key = "header") {
-                Row(Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("🛒", fontSize = 22.sp)
-                    Text("Liste de courses", fontWeight = FontWeight.ExtraBold,
-                        fontSize = 18.sp, color = TextBrown, modifier = Modifier.weight(1f))
-                    if (totalCount > 0) {
-                        Surface(color = AccGreen, shape = CircleShape, modifier = Modifier.size(28.dp)) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(totalCount.toString(), color = Color(0xFF002A1E),
-                                    fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
-                            }
-                        }
-                    }
-                    if (vmGroups.isNotEmpty()) {
-                        IconButton(onClick = { showShare = true }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Share, null, tint = TextMuted, modifier = Modifier.size(18.dp))
-                        }
-                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.MoreVert, null, tint = TextMuted, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-            }
-
-            // ── Add bar ───────────────────────────────────────
+            // ── Add bar ──────────────────────────────────────────────
             item(key = "add_bar") {
-                Card(shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = CatHeaderBg),
-                    border = BorderStroke(1.dp, BorderBeige)) {
-                    Column(Modifier.padding(start=10.dp, end=10.dp, top=9.dp, bottom=10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Ajouter manuellement", fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold, color = TextBrown)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Article name — takes remaining space
-                            OutlinedTextField(
-                                value = addName, onValueChange = { addName = it },
-                                placeholder = { Text("Nom de l'article…", fontSize = 12.sp) },
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                shape = RoundedCornerShape(8.dp), singleLine = true,
-                                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = TextBrown),
-                                keyboardOptions = KeyboardOptions(
-                                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
-                                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
-                                colors = fieldColors
-                            )
-                            // Quantity — fixed 58dp
-                            OutlinedTextField(
-                                value = addQty, onValueChange = { addQty = it },
-                                placeholder = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    Text("Qté", fontSize = 11.sp, color = TextMuted) } },
-                                modifier = Modifier.width(58.dp).height(48.dp),
-                                shape = RoundedCornerShape(8.dp), singleLine = true,
-                                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = TextBrown,
-                                    textAlign = TextAlign.Center),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
-                                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
-                                colors = fieldColors
-                            )
-                            // Unit dropdown — fixed 72dp
-                            ExposedDropdownMenuBox(
-                                expanded = unitExpanded,
-                                onExpandedChange = { unitExpanded = it },
-                                modifier = Modifier.width(72.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = addUnit, onValueChange = {},
-                                    readOnly = true, singleLine = true,
-                                    modifier = Modifier.menuAnchor().height(48.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = TextBrown,
-                                        textAlign = TextAlign.Center),
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor         = PriOrange,
-                                        unfocusedBorderColor       = BorderBeige,
-                                        focusedTextColor           = TextBrown,
-                                        unfocusedTextColor         = TextBrown,
-                                        focusedContainerColor      = MaterialTheme.colorScheme.surfaceVariant,
-                                        unfocusedContainerColor    = MaterialTheme.colorScheme.surfaceVariant,
-                                        focusedTrailingIconColor   = TextMuted,
-                                        unfocusedTrailingIconColor = TextMuted
-                                    )
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = unitExpanded,
-                                    onDismissRequest = { unitExpanded = false }
-                                ) {
-                                    listOf("pcs","g","kg","ml","cl","l","c.s.","c.c.",
-                                           "botte","sachet","boîte").forEach { u ->
-                                        DropdownMenuItem(
-                                            text = { Text(u, fontSize = 13.sp) },
-                                            onClick = { addUnit = u; unitExpanded = false }
-                                        )
-                                    }
-                                }
-                            }
-                            // Add button — 48dp square
-                            Surface(
-                                color  = if (addName.isNotBlank()) PriOrangeDark else BorderBeige,
-                                shape  = RoundedCornerShape(8.dp),
-                                modifier = Modifier.size(48.dp).clickable(enabled = addName.isNotBlank()) { addItem() }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Add, null,
-                                        tint     = if (addName.isNotBlank()) Color.White else TextMuted,
-                                        modifier = Modifier.size(22.dp))
-                                }
+                Row(Modifier.background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    // Nom
+                    OutlinedTextField(value=addName, onValueChange={addName=it},
+                        placeholder={Text("Nom de l'article…", fontSize=12.sp, color=TextMuted)},
+                        modifier=Modifier.weight(1f).height(48.dp),
+                        shape=RoundedCornerShape(8.dp), singleLine=true,
+                        textStyle=androidx.compose.ui.text.TextStyle(
+                            fontSize=13.sp, color=TextBrown,
+                            lineHeightStyle=androidx.compose.ui.text.style.LineHeightStyle(
+                                alignment=androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                                trim=androidx.compose.ui.text.style.LineHeightStyle.Trim.Both)),
+                        keyboardOptions=KeyboardOptions(
+                            capitalization=androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                            imeAction=androidx.compose.ui.text.input.ImeAction.Next),
+                        colors=fieldColors)
+                    // Quantité
+                    OutlinedTextField(value=addQty, onValueChange={addQty=it},
+                        placeholder={Box(Modifier.fillMaxWidth(), contentAlignment=Alignment.Center){
+                            Text("Qté", fontSize=11.sp, color=TextMuted) }},
+                        modifier=Modifier.width(56.dp).height(48.dp),
+                        shape=RoundedCornerShape(8.dp), singleLine=true,
+                        textStyle=androidx.compose.ui.text.TextStyle(fontSize=13.sp, color=TextBrown,
+                            textAlign=androidx.compose.ui.text.style.TextAlign.Center),
+                        keyboardOptions=KeyboardOptions(
+                            keyboardType=androidx.compose.ui.text.input.KeyboardType.Decimal,
+                            imeAction=androidx.compose.ui.text.input.ImeAction.Next),
+                        colors=fieldColors)
+                    // Unité — dropdown, rien par défaut
+                    var unitExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(expanded=unitExpanded, onExpandedChange={unitExpanded=it},
+                        modifier=Modifier.width(74.dp)) {
+                        OutlinedTextField(value=addUnit, onValueChange={},
+                            readOnly=true, singleLine=true,
+                            placeholder={Box(Modifier.fillMaxWidth(), contentAlignment=Alignment.Center){
+                                Text("unité", fontSize=10.sp, color=TextMuted) }},
+                            modifier=Modifier.menuAnchor().height(48.dp),
+                            shape=RoundedCornerShape(8.dp),
+                            textStyle=androidx.compose.ui.text.TextStyle(fontSize=12.sp, color=TextBrown,
+                                textAlign=androidx.compose.ui.text.style.TextAlign.Center),
+                            trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded)},
+                            colors=OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor=PriOrange, unfocusedBorderColor=BorderBeige,
+                                focusedTextColor=TextBrown, unfocusedTextColor=TextBrown,
+                                focusedContainerColor=MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor=MaterialTheme.colorScheme.surfaceVariant,
+                                focusedTrailingIconColor=TextMuted, unfocusedTrailingIconColor=TextMuted))
+                        ExposedDropdownMenu(expanded=unitExpanded, onDismissRequest={unitExpanded=false}) {
+                            listOf("pcs","g","kg","ml","cl","l","c.s.","c.c.","botte","sachet","boîte").forEach { u ->
+                                DropdownMenuItem(text={Text(u, fontSize=13.sp)},
+                                    onClick={addUnit=u; unitExpanded=false})
                             }
                         }
                     }
+                    // Bouton +
+                    Surface(color=if(addName.isNotBlank()) PriOrangeDark else BorderBeige,
+                        shape=RoundedCornerShape(8.dp),
+                        modifier=Modifier.size(48.dp).clickable(enabled=addName.isNotBlank()){addItem()}) {
+                        Box(contentAlignment=Alignment.Center) {
+                            Icon(Icons.Default.Add, null,
+                                tint=if(addName.isNotBlank()) Color.White else TextMuted,
+                                modifier=Modifier.size(22.dp))
+                        }
+                    }
                 }
+                HorizontalDivider(color=BorderBeige)
             }
 
-            // ── Empty ─────────────────────────────────────────
+            // ── Action bar ────────────────────────────────────────────
+            item(key="action_bar") {
+                Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal=16.dp, vertical=9.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    Text(if(totalCount>0) "🛒  $totalCount article${if(totalCount>1)"s" else ""}" else "🛒  Liste vide",
+                        fontSize=14.sp, fontWeight=FontWeight.Bold, color=TextBrown, modifier=Modifier.weight(1f))
+                    if(vmGroups.isNotEmpty()) {
+                        IconButton(onClick={showShare=true}, modifier=Modifier.size(34.dp)) {
+                            Icon(Icons.Default.Share,null,tint=PriOrange,modifier=Modifier.size(18.dp)) }
+                        IconButton(onClick={showMenu=true}, modifier=Modifier.size(34.dp)) {
+                            Icon(Icons.Default.MoreVert,null,tint=PriOrange,modifier=Modifier.size(18.dp)) }
+                    }
+                }
+                HorizontalDivider(color=BorderBeige)
+                Spacer(Modifier.height(8.dp))
+            }
+
+            // ── Empty state ───────────────────────────────────────────
             if (localGroups.isEmpty()) {
-                item(key = "empty") {
-                    Column(Modifier.fillMaxWidth().padding(top=48.dp),
+                item(key="empty") {
+                    Column(Modifier.fillMaxWidth().padding(top=60.dp),
                         horizontalAlignment=Alignment.CenterHorizontally,
                         verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Text("🛒", fontSize=52.sp)
                         Text("Liste vide", fontWeight=FontWeight.Bold, fontSize=16.sp, color=TextBrown)
-                        Text("Planifiez des repas ou ajoutez des articles manuellement",
+                        Text("Planifiez des repas ou ajoutez\ndes articles manuellement",
                             fontSize=13.sp, color=TextMuted, fontStyle=FontStyle.Italic,
                             textAlign=TextAlign.Center)
                     }
                 }
             } else {
-                // ── Category cards ────────────────────────────
+                // ── Category groups ───────────────────────────────────
                 localGroups.forEachIndexed { catIdx, group ->
-                    item(key = "grp_${group.categoryId}") {
-                        val catItems      = localItems[group.categoryId] ?: group.items
+                    item(key="grp_${group.categoryId}") {
+                        val catItems = localItems[group.categoryId] ?: group.items
                         val isCatDragging = catDragIdx == catIdx
 
-                        // catDragOffsetPx used directly for zero-lag finger tracking
-                        // catScale animated for lift effect only
-                        val catScale by animateFloatAsState(
-                            targetValue   = if (isCatDragging) 1.03f else 1f,
-                            animationSpec = spring(dampingRatio=Spring.DampingRatioMediumBouncy),
-                            label = "catScale"
-                        )
-
-                        Card(
-                            shape  = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = CatHeaderBg),
-                            border = BorderStroke(1.dp, if(isCatDragging) PriOrange else BorderBeige),
-                            modifier = Modifier
+                        Column(
+                            Modifier
                                 .fillMaxWidth()
-                                .zIndex(if (isCatDragging) 10f else 0f)
-                                .graphicsLayer {
-                                    translationY    = if (isCatDragging) catDragOffsetPx else 0f
-                                    scaleX          = catScale
-                                    scaleY          = catScale
-                                    shadowElevation = if (isCatDragging) 24f else 1f
-                                }
+                                .padding(horizontal=14.dp)
+                                .shadow(if(isCatDragging) 6.dp else 0.dp, RoundedCornerShape(12.dp))
+                                .background(BgCream)
                         ) {
-                            // Category header — long-press to drag
+                            // ── Category header — draggable ──────────────
                             Row(
                                 Modifier.fillMaxWidth()
-                                    .background(CatHeaderBg)
-                                    // IMPORTANT: use stable categoryId as key, not catIdx
-                                    .pointerInput(group.categoryId) {
+                                    .pointerInput(catIdx) {
                                         detectDragGesturesAfterLongPress(
                                             onDragStart = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                isDragging = true
-                                                catDragIdx = localGroups.indexOfFirst {
-                                                    it.categoryId == group.categoryId }
-                                                catDeltaAcc = 0f
-                                                catDragOffsetPx = 0f
+                                                isDragging = true; catDragIdx = catIdx; catDeltaAcc = 0f
                                             },
-                                            onDrag = { ch, drag ->
-                                                ch.consume()
-                                                catDeltaAcc     += drag.y
-                                                catDragOffsetPx += drag.y
+                                            onDrag = { change, drag ->
+                                                change.consume()
+                                                catDeltaAcc += drag.y
                                                 val steps = (catDeltaAcc / catHeightPx).toInt()
                                                 if (steps != 0) {
-                                                    val from = catDragIdx
-                                                        ?: return@detectDragGesturesAfterLongPress
-                                                    val to = (from + steps)
-                                                        .coerceIn(0, localGroups.size - 1)
+                                                    val from = catDragIdx ?: return@detectDragGesturesAfterLongPress
+                                                    val to = (from + steps).coerceIn(0, localGroups.size - 1)
                                                     if (to != from) {
-                                                        localGroups.add(to, localGroups.removeAt(from))
-                                                        catDragIdx       = to
-                                                        catDeltaAcc     -= steps * catHeightPx
-                                                        catDragOffsetPx -= steps * catHeightPx
-                                                        haptic.performHapticFeedback(
-                                                            HapticFeedbackType.TextHandleMove)
+                                                        val moved = localGroups.removeAt(from)
+                                                        localGroups.add(to, moved)
+                                                        catDragIdx = to
+                                                        catDeltaAcc -= steps * catHeightPx
                                                     }
                                                 }
                                             },
                                             onDragEnd = {
-                                                catDragOffsetPx = 0f
-                                                // Save the user's order BEFORE calling VM
-                                                // so LaunchedEffect never overwrites it
-                                                localCatOrder = localGroups.map { it.categoryId }
-                                                // ONE atomic call — no race condition
-                                                vm.reorderAllCategories(
-                                                    localGroups.map { it.categoryId })
-                                                catDragIdx = null
-                                                isDragging = false
+                                                localGroups.forEachIndexed { i, g ->
+                                                    vm.reorderCategoryByIndex(g.categoryId, i)
+                                                }
+                                                catDragIdx = null; isDragging = false
                                             },
                                             onDragCancel = {
-                                                catDragOffsetPx = 0f
-                                                catDragIdx = null
-                                                isDragging = false
-                                                // On cancel: restore from saved order
-                                                val order = localCatOrder
-                                                if (order != null) {
-                                                    val vmById = vmGroups.associateBy { it.categoryId }
-                                                    localGroups.clear()
-                                                    localGroups.addAll(
-                                                        order.mapNotNull { vmById[it] })
-                                                }
+                                                catDragIdx = null; isDragging = false
+                                                localGroups.clear(); localGroups.addAll(vmGroups)
                                             }
                                         )
                                     }
-                                    .padding(horizontal=12.dp, vertical=8.dp),
+                                    .padding(horizontal=8.dp, vertical=8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
-                                Text("⠿", fontSize=14.sp,
-                                    color=if(isCatDragging) PriOrange else TextMuted.copy(alpha=0.4f))
-                                Text(catEmoji(group.categoryName), fontSize=15.sp)
+                                Text("⠿", fontSize=14.sp, color=TextBrown.copy(alpha=0.35f))
+                                Text(catEmoji(group.categoryName), fontSize=14.sp)
                                 Text(group.categoryName.uppercase(),
-                                    fontWeight=FontWeight.ExtraBold, fontSize=13.sp,
-                                    color=TextBrown, letterSpacing=0.5.sp,
+                                    fontWeight=FontWeight.ExtraBold, fontSize=11.sp,
+                                    color=TextBrown, letterSpacing=0.8.sp,
                                     modifier=Modifier.weight(1f))
-                                Surface(color=AccGreenLight, shape=RoundedCornerShape(10.dp)) {
-                                    Text(catItems.size.toString(), fontSize=11.sp,
-                                        fontWeight=FontWeight.ExtraBold, color=AccGreen,
-                                        modifier=Modifier.padding(horizontal=8.dp, vertical=2.dp))
+                                Surface(color=PriOrangeLight, shape=RoundedCornerShape(20.dp)) {
+                                    Text(catItems.size.toString(), fontSize=10.sp,
+                                        fontWeight=FontWeight.ExtraBold, color=PriOrange,
+                                        modifier=Modifier.padding(horizontal=7.dp, vertical=2.dp))
                                 }
                             }
 
-                            HorizontalDivider(color=BorderBeige, thickness=1.dp)
-
-                            // Items — lighter background, name centered, ✓ on RIGHT
+                            // ── Items ─────────────────────────────────────
                             catItems.forEachIndexed { itemIdx, item ->
                                 val isItemDragging = itemDragIdx[group.categoryId] == itemIdx
-                                val rawOff = itemDragOffPx[group.categoryId] ?: 0f
-
-                                val itemScale by animateFloatAsState(
-                                    targetValue   = if (isItemDragging) 1.02f else 1f,
-                                    animationSpec = spring(dampingRatio=Spring.DampingRatioMediumBouncy),
-                                    label = "iSc_$itemIdx"
-                                )
-
-                                Row(
-                                    Modifier.fillMaxWidth()
-                                        .background(if(isItemDragging) Color(0xFF2A3558) else ItemRowBg)
-                                        .zIndex(if(isItemDragging) 1f else 0f)
-                                        .graphicsLayer {
-                                            translationY    = if(isItemDragging) rawOff else 0f
-                                            scaleX          = itemScale; scaleY = itemScale
-                                            shadowElevation = if(isItemDragging) 10f else 0f
-                                        }
-                                        .pointerInput("${group.categoryId}_item_$itemIdx") {
+                                Card(
+                                    shape=RoundedCornerShape(10.dp),
+                                    colors=CardDefaults.cardColors(
+                                        containerColor=if(isItemDragging) PriOrangeLight
+                                                       else MaterialTheme.colorScheme.surface),
+                                    border=BorderStroke(1.dp, if(isItemDragging) PriOrange else BorderBeige),
+                                    modifier=Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom=6.dp)
+                                        .shadow(if(isItemDragging) 5.dp else 1.dp, RoundedCornerShape(10.dp))
+                                        .pointerInput("item_${group.categoryId}_$itemIdx") {
                                             detectDragGesturesAfterLongPress(
                                                 onDragStart = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     isDragging = true
-                                                    itemDragIdx[group.categoryId]   = itemIdx
-                                                    itemDeltaAcc[group.categoryId]  = 0f
-                                                    itemDragOffPx[group.categoryId] = 0f
+                                                    itemDragIdx[group.categoryId] = itemIdx
+                                                    itemDeltaAcc[group.categoryId] = 0f
                                                 },
-                                                onDrag = { ch, drag ->
-                                                    ch.consume()
-                                                    val prev    = itemDeltaAcc[group.categoryId]  ?: 0f
-                                                    val prevOff = itemDragOffPx[group.categoryId] ?: 0f
-                                                    val next    = prev + drag.y
-                                                    itemDeltaAcc[group.categoryId]  = next
-                                                    itemDragOffPx[group.categoryId] = prevOff + drag.y
+                                                onDrag = { change, drag ->
+                                                    change.consume()
+                                                    val prev = itemDeltaAcc[group.categoryId] ?: 0f
+                                                    val next = prev + drag.y
+                                                    itemDeltaAcc[group.categoryId] = next
                                                     val steps = (next / itemHeightPx).toInt()
                                                     if (steps != 0) {
-                                                        val from = itemDragIdx[group.categoryId]
-                                                            ?: return@detectDragGesturesAfterLongPress
-                                                        val list = localItems[group.categoryId]
-                                                            ?: return@detectDragGesturesAfterLongPress
-                                                        val to = (from + steps).coerceIn(0, list.size - 1)
-                                                        if (to != from) {
-                                                            list.add(to, list.removeAt(from))
-                                                            itemDragIdx[group.categoryId]   = to
-                                                            itemDeltaAcc[group.categoryId]  = next - steps * itemHeightPx
-                                                            itemDragOffPx[group.categoryId] = (prevOff + drag.y) - steps * itemHeightPx
-                                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                        val curFrom = itemDragIdx[group.categoryId] ?: return@detectDragGesturesAfterLongPress
+                                                        val items = localItems[group.categoryId] ?: return@detectDragGesturesAfterLongPress
+                                                        val curTo = (curFrom + steps).coerceIn(0, items.size - 1)
+                                                        if (curTo != curFrom) {
+                                                            val moved = items.removeAt(curFrom)
+                                                            items.add(curTo, moved)
+                                                            itemDragIdx[group.categoryId] = curTo
+                                                            itemDeltaAcc[group.categoryId] = next - steps * itemHeightPx
                                                         }
                                                     }
                                                 },
                                                 onDragEnd = {
-                                                    itemDragOffPx[group.categoryId] = 0f
-                                                    localItems[group.categoryId]?.let {
-                                                        vm.setItemOrder(group.categoryId, it.map { i -> i.id })
+                                                    val items = localItems[group.categoryId]
+                                                    if (items != null) {
+                                                        items.forEachIndexed { i, it ->
+                                                            val origIdx = vmGroups.find { g -> g.categoryId == group.categoryId }
+                                                                ?.items?.indexOf(it) ?: -1
+                                                            if (origIdx != i) vm.reorderItem(group.categoryId, it.id, items.getOrNull(i + 1)?.id ?: it.id)
+                                                        }
+                                                        // Simpler: pass ordered IDs to VM
+                                                        vm.setItemOrder(group.categoryId, items.map { it.id })
                                                     }
                                                     itemDragIdx.remove(group.categoryId)
                                                     isDragging = false
                                                 },
                                                 onDragCancel = {
-                                                    itemDragOffPx[group.categoryId] = 0f
                                                     itemDragIdx.remove(group.categoryId)
                                                     isDragging = false
                                                     localItems[group.categoryId] = vmGroups
@@ -460,127 +349,99 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                                 }
                                             )
                                         }
-                                        .padding(horizontal=12.dp, vertical=7.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // ⠿ drag handle (left)
-                                    Text("⠿", fontSize=11.sp,
-                                        color=if(isItemDragging) PriOrange else BorderBeige)
-                                    // Name — centered
-                                    Text(item.name, fontSize=13.sp, fontWeight=FontWeight.Medium,
-                                        color=TextBrown, modifier=Modifier.weight(1f),
-                                        textAlign=TextAlign.Center,
-                                        maxLines=1, overflow=TextOverflow.Ellipsis)
-                                    // Quantity — right of name, before ✓
-                                    if (item.qty > 0 || item.unit.isNotBlank()) {
-                                        Row(verticalAlignment=Alignment.CenterVertically,
-                                            horizontalArrangement=Arrangement.spacedBy(2.dp)) {
-                                            if (item.qty > 0)
-                                                Text(fmtQty(item.qty), fontSize=13.sp,
-                                                    fontWeight=FontWeight.ExtraBold, color=PriOrange)
-                                            if (item.unit.isNotBlank())
-                                                Text(item.unit, fontSize=11.sp, color=TextMuted)
+                                    Row(Modifier.fillMaxWidth().padding(horizontal=12.dp, vertical=10.dp),
+                                        verticalAlignment=Alignment.CenterVertically,
+                                        horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                                        Text("⠿", fontSize=12.sp, color=BorderBeige)
+                                        Text(item.name, fontSize=13.sp, fontWeight=FontWeight.Medium,
+                                            color=Color(0xFF1A1A1A), modifier=Modifier.weight(1f),
+                                            maxLines=1, overflow=TextOverflow.Ellipsis)
+                                        if(item.qty > 0 || item.unit.isNotBlank()) {
+                                            Text(buildString {
+                                                if(item.qty>0) append(fmtQty(item.qty))
+                                                if(item.unit.isNotBlank()){ if(item.qty>0) append("\u00A0"); append(item.unit) }
+                                            }, fontSize=13.sp, fontWeight=FontWeight.Bold,
+                                                color=PriOrangeDark, textAlign=TextAlign.End)
                                         }
-                                    }
-                                    // 📅 badge
-                                    if (item.fromRecipeId != null)
-                                        Text("📅", fontSize=9.sp, color=TextMuted)
-                                    // ✓ green circle — far right
-                                    Surface(color=AccGreenLight, shape=CircleShape,
-                                        border=BorderStroke(1.5.dp, AccGreen),
-                                        modifier=Modifier.size(26.dp)
-                                            .clickable { undoItem=item; vm.deleteItem(item.id) }) {
-                                        Box(contentAlignment=Alignment.Center) {
-                                            Text("✓", fontSize=12.sp, color=AccGreen,
-                                                fontWeight=FontWeight.ExtraBold)
+                                        if(item.fromRecipeId != null) {
+                                            Text("📅", fontSize=9.sp, color=TextMuted)
+                                        }
+                                        IconButton(onClick={undoItem=item; vm.deleteItem(item.id)},
+                                            modifier=Modifier.size(24.dp)) {
+                                            Icon(Icons.Default.Close,null,tint=TextMuted,modifier=Modifier.size(14.dp))
                                         }
                                     }
                                 }
-                                if (itemIdx < catItems.size - 1)
-                                    HorizontalDivider(color=BorderBeige.copy(alpha=0.3f),
-                                        thickness=0.5.dp,
-                                        modifier=Modifier.padding(horizontal=12.dp))
                             }
                         }
+                        Spacer(Modifier.height(6.dp))
                     }
                 }
             }
         }
 
-        // ── Undo snackbar ─────────────────────────────────────
+        // ── Undo ──────────────────────────────────────────────────────
         AnimatedVisibility(visible=undoItem!=null,
             enter=slideInVertically{it}+fadeIn(),
             exit=slideOutVertically{it}+fadeOut(tween(250)),
-            modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=80.dp)) {
-            Surface(color=Color(0xFF131720), shape=RoundedCornerShape(24.dp),
-                shadowElevation=10.dp, border=BorderStroke(1.dp, BorderBeige),
+            modifier=Modifier.align(Alignment.BottomCenter).padding(bottom=16.dp)) {
+            Surface(color=Color(0xFF2C1A0E), shape=RoundedCornerShape(28.dp), shadowElevation=10.dp,
                 modifier=Modifier.padding(horizontal=16.dp)) {
                 Row(Modifier.padding(start=16.dp,end=10.dp,top=10.dp,bottom=10.dp),
                     verticalAlignment=Alignment.CenterVertically,
                     horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                    Text("✅  ${undoItem?.name?:""} supprimé",
-                        color=TextBrown, fontSize=13.sp, modifier=Modifier.weight(1f))
+                    Text("✅  ${undoItem?.name?:""} supprimé",color=Color.White,fontSize=13.sp,modifier=Modifier.weight(1f))
                     Button(onClick={undoItem?.let{vm.addManualItem(it.name,it.qty,it.unit);undoItem=null}},
-                        colors=ButtonDefaults.buttonColors(containerColor=PriOrangeDark),
+                        colors=ButtonDefaults.buttonColors(containerColor=PriOrange),
                         shape=RoundedCornerShape(20.dp),
-                        contentPadding=PaddingValues(horizontal=14.dp, vertical=6.dp)) {
-                        Text("Annuler", fontWeight=FontWeight.Bold, fontSize=12.sp)
+                        contentPadding=PaddingValues(horizontal=14.dp,vertical=6.dp)) {
+                        Text("Annuler",fontWeight=FontWeight.Bold,fontSize=12.sp)
                     }
                 }
             }
         }
     }
 
-    if (showShare) ShareSheet(vm.buildShareText(localGroups.toList()), {showShare=false}, context)
-    if (showMenu) AlertDialog(
-        onDismissRequest = {showMenu=false},
-        containerColor   = CardSurface,
-        shape            = RoundedCornerShape(16.dp),
-        title = { Text("Actions", color=TextBrown) },
-        text  = { Column {
-            TextButton(onClick={vm.clearChecked();showMenu=false}) {
-                Text("✓ Vider les cochés", color=TextBrown) }
+    if(showShare) ShareSheet(vm.buildShareText(localGroups.toList()),{showShare=false},context)
+    if(showMenu) AlertDialog(onDismissRequest={showMenu=false},
+        title={Text("Actions")},
+        text={Column{
+            TextButton(onClick={vm.clearChecked();showMenu=false}){Text("✓ Vider les cochés")}
             TextButton(onClick={vm.clearAll();showMenu=false},
-                colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)) {
-                Text("🗑 Tout vider") }
+                colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){
+                Text("🗑 Tout vider")}
         }},
-        confirmButton = { TextButton(onClick={showMenu=false}) { Text("Fermer", color=TextMuted) } }
-    )
+        confirmButton={TextButton(onClick={showMenu=false}){Text("Fermer")}},
+        shape=RoundedCornerShape(16.dp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShareSheet(text: String, onDismiss: () -> Unit, context: Context) {
     var copied by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest=onDismiss, containerColor=CardSurface) {
-        Column(Modifier.padding(start=20.dp,end=20.dp,bottom=40.dp),
-            verticalArrangement=Arrangement.spacedBy(14.dp)) {
-            Text("📤 Partager la liste", fontWeight=FontWeight.ExtraBold,
-                fontSize=18.sp, color=TextBrown)
-            Surface(color=MaterialTheme.colorScheme.surfaceVariant, shape=RoundedCornerShape(12.dp),
-                border=BorderStroke(1.dp, BorderBeige)) {
-                Text(text, fontSize=13.sp, lineHeight=22.sp, color=TextBrown,
-                    modifier=Modifier.fillMaxWidth().padding(14.dp)
-                        .heightIn(max=260.dp).verticalScroll(rememberScrollState()))
+    ModalBottomSheet(onDismissRequest=onDismiss) {
+        Column(Modifier.padding(start=20.dp,end=20.dp,bottom=40.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+            Text("📤 Partager la liste",fontWeight=FontWeight.ExtraBold,fontSize=18.sp)
+            Surface(color=MaterialTheme.colorScheme.surfaceVariant,shape=RoundedCornerShape(12.dp)) {
+                Text(text,fontSize=13.sp,lineHeight=22.sp,
+                    modifier=Modifier.fillMaxWidth().padding(14.dp).heightIn(max=260.dp).verticalScroll(rememberScrollState()))
             }
             Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick={
                     val cb=context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    cb.setPrimaryClip(ClipData.newPlainText("courses",text)); copied=true
-                }, modifier=Modifier.weight(1f), shape=RoundedCornerShape(12.dp),
-                    border=BorderStroke(1.dp, BorderBeige)) {
-                    Icon(if(copied) Icons.Default.Check else Icons.Default.ContentCopy, null,
-                        modifier=Modifier.size(18.dp), tint=TextBrown)
-                    Spacer(Modifier.width(6.dp)); Text(if(copied) "Copié !" else "Copier", color=TextBrown)
+                    cb.setPrimaryClip(ClipData.newPlainText("courses",text));copied=true
+                },modifier=Modifier.weight(1f),shape=RoundedCornerShape(12.dp)) {
+                    Icon(if(copied) Icons.Default.Check else Icons.Default.ContentCopy,null,modifier=Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp));Text(if(copied)"Copié!" else "Copier")
                 }
-                Button(onClick={context.startActivity(Intent.createChooser(
-                    Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,text)},
-                    "Partager"))},
-                    modifier=Modifier.weight(1f), shape=RoundedCornerShape(12.dp),
-                    colors=ButtonDefaults.buttonColors(containerColor=PriOrangeDark)) {
-                    Icon(Icons.Default.Share, null, modifier=Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp)); Text("Partager")
+                Button(onClick={
+                    context.startActivity(Intent.createChooser(
+                        Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,text)},"Partager"))
+                },modifier=Modifier.weight(1f),shape=RoundedCornerShape(12.dp),
+                    colors=ButtonDefaults.buttonColors(containerColor=PriOrange)) {
+                    Icon(Icons.Default.Share,null,modifier=Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp));Text("Partager")
                 }
             }
         }
