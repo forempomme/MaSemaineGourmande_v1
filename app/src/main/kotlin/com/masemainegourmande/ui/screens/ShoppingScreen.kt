@@ -285,13 +285,13 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                     shadowElevation = if (isCatDragging) 16f else 0f
                                 }
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(CardBg)
+                                .background(MaterialTheme.colorScheme.surface)
                         ) {
                             // ── Category header — draggable ──────────────
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .pointerInput(catIdx) {
+                                    .pointerInput(group.categoryId) {
                                         detectDragGesturesAfterLongPress(
                                             onDragStart = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -337,16 +337,17 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                     fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
                                     color = TextBrown, letterSpacing = 0.5.sp,
                                     modifier = Modifier.weight(1f))
-                                // Badge count — cercle vert foncé
+                                // Badge count — cercle outline vert (même style que ✓)
                                 Surface(
-                                    color  = AccGreen,
+                                    color  = Color.Transparent,
                                     shape  = CircleShape,
+                                    border = BorderStroke(1.5.dp, AccGreen),
                                     modifier = Modifier.size(26.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Text(catItems.size.toString(),
                                             fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
-                                            color = Color.White)
+                                            color = AccGreen)
                                     }
                                 }
                             }
@@ -370,7 +371,7 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                         .background(
                                             if (isItemDragging) AccGreenLight.copy(alpha = 0.15f)
                                             else Color.Transparent)
-                                        .pointerInput("item_${group.categoryId}_$itemIdx") {
+                                        .pointerInput("drag_${item.id}") {
                                             detectDragGesturesAfterLongPress(
                                                 onDragStart = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -415,10 +416,12 @@ fun ShoppingScreen(vm: ShoppingViewModel) {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    // Nom
+                                    // Nom — centré
                                     Text(item.name,
                                         fontSize = 14.sp, fontWeight = FontWeight.Normal,
-                                        color = TextBrown, modifier = Modifier.weight(1f),
+                                        color = TextBrown,
+                                        modifier = Modifier.weight(1f),
+                                        textAlign = TextAlign.Center,
                                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     // Quantité + unité
                                     if (item.qty > 0 || item.unit.isNotBlank()) {
