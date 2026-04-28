@@ -36,15 +36,6 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
-private val IMPORT_EMOJIS = listOf(
-    "🍗","🥩","🐟","🍔","🥓","🌭","🍖","🦐","🦞","🦀","🦑","🐙","🍣","🍱","🍤",
-    "🥦","🥕","🍅","🥑","🧅","🧄","🌽","🫛","🥬","🫑","🌶️","🥒","🍆","🥔","🫚",
-    "🍋","🍊","🍎","🍓","🫐","🍇","🍑","🥭","🍍","🍌","🍒","🍈",
-    "🍕","🍝","🍜","🍲","🥘","🫕","🍛","🍚","🥗","🥪","🌮","🌯","🥙","🍳","🥞",
-    "🧀","🥛","🧁","🎂","🍰","🥧","🥐","🥖","🍞","🫙","🥫","🧂","☕","🍵","🍽️"
-)
-
-
 private enum class ImportTab { URL, PASTE, HISTORY }
 
 private val _json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -52,9 +43,10 @@ private val _json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportScreen(
-    importVm:      ImportViewModel,
-    shoppingVm:    ShoppingViewModel,
-    onRecipeSaved: (savedId: String) -> Unit = {}
+    importVm:        ImportViewModel,
+    shoppingVm:      ShoppingViewModel,
+    existingRecipes: List<com.masemainegourmande.data.model.RecipeEntity> = emptyList(),
+    onRecipeSaved:   (savedId: String) -> Unit = {}
 ) {
     val state   by importVm.state.collectAsState()
     val history by importVm.importHistory.collectAsState()
@@ -97,7 +89,9 @@ fun ImportScreen(
             ) { (t, st) ->
                 when {
                     st is ImportState.Success ->
-                        SuccessPanel(st.recipe, onReset = importVm::reset,
+                        SuccessPanel(st.recipe,
+                            existingRecipes = existingRecipes,
+                            onReset  = importVm::reset,
                             onConfirm = { r -> importVm.confirmImport(r) },
                             onAddToShopping = { r, p ->
                                 val entity = r.toTempEntity()
@@ -116,15 +110,19 @@ fun ImportScreen(
 
 @Composable
 private fun SuccessPanel(
-    originalRecipe: ParsedRecipe,
+    originalRecipe:  ParsedRecipe,
+    existingRecipes: List<com.masemainegourmande.data.model.RecipeEntity> = emptyList(),
     onReset:         () -> Unit,
     onConfirm:       (ParsedRecipe) -> Unit,
     onAddToShopping: (ParsedRecipe, Int) -> Unit
 ) {
-    // Editable copy of the recipe
-    var name        by remember { mutableStateOf(originalRecipe.name) }
+    var name            by remember { mutableStateOf(originalRecipe.name) }
     var emoji           by remember { mutableStateOf(originalRecipe.emoji) }
     var showEmojiPicker by remember { mutableStateOf(false) }
+    val duplicate = remember(originalRecipe.url) {
+        if (originalRecipe.url.isBlank()) null
+        else existingRecipes.find { it.url == originalRecipe.url }
+    }
     // Start at 6 portions regardless of what was parsed, so user sees scaled quantities immediately
     var portions    by remember { mutableStateOf(6) }
     val basePorts    = remember { originalRecipe.portions.coerceAtLeast(1) }
@@ -145,11 +143,6 @@ private fun SuccessPanel(
                 }
             )
         }
-    }
-
-    val timeStr: String? = originalRecipe.cookTimeMinutes.takeIf { it > 0 }?.let { t ->
-        if (t >= 60) "${t/60}h${if(t%60>0) "${t%60}min" else ""}"
-        else "${t}min"
     }
 
     LazyColumn(
@@ -173,12 +166,32 @@ private fun SuccessPanel(
                     // Emoji + Name
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(modifier=Modifier.clickable { showEmojiPicker = !showEmojiPicker }) {
-                            Text(emoji, fontSize=38.sp)
-                            Text("✏️", fontSize=12.sp,
-                                modifier=Modifier.align(Alignment.BottomEnd))
+                        Box(modifier = Modifier.clickable { showEmojiPicker = !showEmojiPicker }) {
+                            Text(emoji, fontSize = 38.sp)
+                            Surface(
+                                color    = Color.White.copy(alpha=0.85f),
+                                shape    = androidx.compose.foundation.shape.CircleShape,
+                                modifier = Modifier.size(18.dp).align(Alignment.BottomEnd)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("✏️", fontSize=9.sp)
+                                }
+                            }
                         }
                         Column(Modifier.weight(1f)) {
+                            if (originalRecipe.cookTimeMinutes > 0) {
+                                val tDisp = if (originalRecipe.cookTimeMinutes >= 60)
+                                    "${originalRecipe.cookTimeMinutes/60}h${if(originalRecipe.cookTimeMinutes%60>0)"${originalRecipe.cookTimeMinutes%60}min" else ""}"
+                                else "${originalRecipe.cookTimeMinutes}min"
+                                Surface(color=Color.White.copy(alpha=0.2f), shape=RoundedCornerShape(20.dp)) {
+                                    Row(Modifier.padding(horizontal=8.dp, vertical=3.dp),
+                                        verticalAlignment=Alignment.CenterVertically,
+                                        horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+                                        Text("⏱️", fontSize=11.sp)
+                                        Text(tDisp, fontSize=11.sp, fontWeight=FontWeight.Bold, color=Color.White)
+                                    }
+                                }
+                            }
                             Text("✅ Recette détectée", fontSize = 11.sp,
                                 color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.SemiBold)
                             OutlinedTextField(
@@ -198,18 +211,6 @@ private fun SuccessPanel(
                                     fontWeight = FontWeight.ExtraBold, fontSize = 17.sp
                                 )
                             )
-                        }
-                    }
-
-                    if (timeStr != null) {
-                        Surface(color=Color.White.copy(alpha=0.2f), shape=RoundedCornerShape(20.dp)) {
-                            Row(Modifier.padding(horizontal=10.dp, vertical=5.dp),
-                                verticalAlignment=Alignment.CenterVertically,
-                                horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                                Text("⏱️", fontSize=13.sp)
-                                Text(timeStr, fontSize=12.sp, fontWeight=FontWeight.Bold, color=Color.White)
-                                Text("de préparation", fontSize=10.sp, color=Color.White.copy(alpha=0.85f))
-                            }
                         }
                     }
 
@@ -263,6 +264,48 @@ private fun SuccessPanel(
             }
         }
 
+        if (duplicate != null) {
+            item {
+                Card(colors=CardDefaults.cardColors(containerColor=Color(0xFFFFF3CD)),
+                    border=BorderStroke(1.dp, Color(0xFFFFD166)), shape=RoundedCornerShape(12.dp)) {
+                    Row(Modifier.padding(12.dp),
+                        verticalAlignment=Alignment.CenterVertically,
+                        horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                        Text("⚠️", fontSize=20.sp)
+                        Column(Modifier.weight(1f)) {
+                            Text("Recette déjà importée", fontSize=13.sp,
+                                fontWeight=FontWeight.Bold, color=Color(0xFF856404))
+                            Text("\"${duplicate.name}\" existe déjà dans vos recettes.",
+                                fontSize=12.sp, color=Color(0xFF856404))
+                        }
+                    }
+                }
+            }
+        }
+        if (showEmojiPicker) {
+            item {
+                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
+                    border=BorderStroke(1.dp, BorderBeige), shape=RoundedCornerShape(12.dp)) {
+                    Column(Modifier.padding(10.dp)) {
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement=Arrangement.SpaceBetween,
+                            verticalAlignment=Alignment.CenterVertically) {
+                            Text("Choisir un emoji", fontSize=13.sp,
+                                fontWeight=FontWeight.Bold, color=TextBrown)
+                            TextButton(onClick={showEmojiPicker=false}) {
+                                Text("Fermer", fontSize=12.sp, color=TextMuted) }
+                        }
+                        FlowRow(Modifier.fillMaxWidth(),
+                            horizontalArrangement=Arrangement.spacedBy(0.dp)) {
+                            FOOD_EMOJIS.forEach { e ->
+                                Text(e, fontSize=24.sp,
+                                    modifier=Modifier.clickable { emoji=e; showEmojiPicker=false }.padding(5.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // ── Ingrédients (quantités adaptées) ──────────────────
         if (originalRecipe.ingredients.isNotEmpty()) {
             item {
@@ -516,9 +559,8 @@ private fun ParsedRecipe.toTempEntity(): com.masemainegourmande.data.model.Recip
     val j = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     return com.masemainegourmande.data.model.RecipeEntity(
         id          = java.util.UUID.randomUUID().toString(),
-        name            = name, emoji = emoji, portions = portions, url = url,
-        cookTimeMinutes = cookTimeMinutes,
-        ingredients     = j.encodeToString(ListSerializer(
+        name        = name, emoji = emoji, portions = portions, url = url,
+        ingredients = j.encodeToString(ListSerializer(
             com.masemainegourmande.data.model.Ingredient.serializer()), ingredients),
         steps       = j.encodeToString(ListSerializer(String.serializer()), steps),
         tags        = "[]"

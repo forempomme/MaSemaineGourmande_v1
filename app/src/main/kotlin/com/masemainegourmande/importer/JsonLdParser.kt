@@ -234,6 +234,7 @@ object JsonLdParser {
 
     private fun parseDurationMinutes(iso: String?): Int {
         if (iso.isNullOrBlank()) return 0
+        // ISO 8601 : PT1H30M, PT45M, PT2H
         val h = Regex("""(\d+)H""").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
         val m = Regex("""(\d+)M""").find(iso)?.groupValues?.get(1)?.toIntOrNull() ?: 0
         return h * 60 + m

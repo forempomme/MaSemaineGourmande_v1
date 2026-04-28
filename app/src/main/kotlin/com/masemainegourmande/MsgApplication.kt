@@ -17,15 +17,12 @@ class MsgApplication : Application() {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 
-    /** Migration v2 → v3 : champ done sur les repas */
     private val MIGRATION_2_3 = object : Migration(2, 3) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE meals ADD COLUMN done INTEGER NOT NULL DEFAULT 0")
         }
     }
 
-
-    /** Migration v3 → v4 : cookTimeMinutes sur les recettes */
     private val MIGRATION_3_4 = object : Migration(3, 4) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE recipes ADD COLUMN cookTimeMinutes INTEGER NOT NULL DEFAULT 0")

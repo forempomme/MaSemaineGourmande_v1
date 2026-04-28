@@ -125,10 +125,11 @@ fun ParsedRecipe.toEntity(id: String) = RecipeEntity(
     emoji       = emoji,
     portions    = portions,
     url         = url,
-    tags        = jsonCodec.encodeToString(tags),
-    ingredients = jsonCodec.encodeToString(ingredients),
-    steps       = jsonCodec.encodeToString(steps),
-    note        = note
+    tags            = jsonCodec.encodeToString(tags),
+    ingredients     = jsonCodec.encodeToString(ingredients),
+    steps           = jsonCodec.encodeToString(steps),
+    note            = note,
+    cookTimeMinutes = cookTimeMinutes
 )
 
 @JvmName("encodeStringList")
