@@ -109,6 +109,7 @@ fun ImportScreen(
 // ─── Success panel ────────────────────────────────────────────
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun SuccessPanel(
     originalRecipe:  ParsedRecipe,
     existingRecipes: List<com.masemainegourmande.data.model.RecipeEntity> = emptyList(),
